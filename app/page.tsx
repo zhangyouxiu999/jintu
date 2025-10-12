@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   AlertDialog,
@@ -14,6 +14,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function Home() {
   const [students, setStudents] = useState([
@@ -23,6 +31,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0, // 0: 未到, 1: 已到, 2: 请假, 3: 晚到
     },
     {
       id: "002",
@@ -30,6 +39,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "003",
@@ -37,6 +47,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "004",
@@ -44,6 +55,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "005",
@@ -51,6 +63,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "006",
@@ -58,6 +71,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "007",
@@ -65,6 +79,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "008",
@@ -72,6 +87,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "009",
@@ -79,6 +95,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "010",
@@ -86,6 +103,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "011",
@@ -93,6 +111,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "012",
@@ -100,6 +119,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "013",
@@ -107,6 +127,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "014",
@@ -114,6 +135,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "015",
@@ -121,6 +143,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "016",
@@ -128,6 +151,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "017",
@@ -135,6 +159,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "018",
@@ -142,6 +167,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "019",
@@ -149,6 +175,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "020",
@@ -156,6 +183,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "021",
@@ -163,6 +191,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "022",
@@ -170,6 +199,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "023",
@@ -177,6 +207,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "024",
@@ -184,6 +215,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "025",
@@ -191,6 +223,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "026",
@@ -198,6 +231,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "027",
@@ -205,6 +239,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "028",
@@ -212,6 +247,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "029",
@@ -219,6 +255,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "030",
@@ -226,6 +263,7 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
     {
       id: "031",
@@ -233,8 +271,32 @@ export default function Home() {
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
+      attendanceStatus: 0,
     },
   ]);
+
+  useEffect(() => {
+    const storedStudents = localStorage.getItem("students");
+    if (storedStudents) {
+      setStudents(JSON.parse(storedStudents));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("students", JSON.stringify(students));
+  }, [students]);
+
+  function onClear() {
+    const clearedStudents = students.map((s) => ({
+      ...s,
+      isPresent: false,
+      isOnLeave: false,
+      isLateArrival: false,
+      attendanceStatus: 0,
+    }));
+    setStudents(clearedStudents);
+    localStorage.removeItem("students");
+  }
 
   function getGreeting() {
     const now = new Date();
@@ -288,10 +350,14 @@ export default function Home() {
   // };
 
   const classTitle = "佰盈二班";
-  const presentNames = students.filter((s) => s.isPresent).map((s) => s.name);
-  const onLeaveNames = students.filter((s) => s.isOnLeave).map((s) => s.name);
+  const presentNames = students
+    .filter((s) => s.attendanceStatus === 1)
+    .map((s) => s.name);
+  const onLeaveNames = students
+    .filter((s) => s.attendanceStatus === 2)
+    .map((s) => s.name);
   const lateArrivalNames = students
-    .filter((s) => s.isLateArrival)
+    .filter((s) => s.attendanceStatus === 3)
     .map((s) => s.name);
   const notArrivedNames = students
     .filter((s) => !s.isOnLeave && !s.isPresent)
@@ -305,97 +371,156 @@ ${classTitle}
 请假: ${onLeaveNames.join(", ")}
 晚到：${lateArrivalNames.join(", ")}
 未到：${notArrivedNames.join(", ")}
-已到: ${presentNames.join(", ")}
 教学老师到岗情况：${classTitle}老师已到岗
 `;
 
+  // 已到: ${presentNames.join(", ")}
+
   return (
     <div className=" m-auto w-fit">
-      <h1 className="mx-auto">考勤</h1>
-      <AlertDialog>
-        <AlertDialogTrigger>点名</AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>考勤</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <pre className=" whitespace-pre-wrap text-left">
-                  {textTemplate}
-                </pre>
-                <Button
-                  className="ml-auto"
-                  onClick={() => navigator.clipboard.writeText(textTemplate)}
-                >
-                  复制文本
-                </Button>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction>确认</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <ul>
-        {students.map((student) => {
-          const isPresent = student.isPresent; // 假设所有学生都未到
-          const isOnLeave = student.isOnLeave; // 假设所有学生都未请假
-          const isLateArrival = student.isLateArrival; // 假设所有学生都未晚到
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">姓名</TableHead>
+            <TableHead className=" text-center">状态</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {students.map((student) => {
+            // const isPresent = student.isPresent; // 假设所有学生都未到
+            // const isOnLeave = student.isOnLeave; // 假设所有学生都未请假
+            // const isLateArrival = student.isLateArrival; // 假设所有学生都未晚到
 
-          const onClickIsPresent = () => {
-            const newStudents = students.map((s) => {
-              if (s.id === student.id) {
-                return {
-                  ...s,
-                  isPresent: true,
-                };
-              }
-              return s;
-            });
-            setStudents(newStudents);
-          };
+            const onClickIsPresent = () => {
+              const newStudents = students.map((s) => {
+                if (s.id === student.id) {
+                  return {
+                    ...s,
+                    isPresent: true,
+                    attendanceStatus: 1,
+                  };
+                }
+                return s;
+              });
+              setStudents(newStudents);
+            };
 
-          const onClickIsOnLeave = () => {
-            const newStudents = students.map((s) => {
-              if (s.id === student.id) {
-                return {
-                  ...s,
-                  isOnLeave: true,
-                };
-              }
-              return s;
-            });
-            setStudents(newStudents);
-          };
+            const onClickIsOnLeave = () => {
+              const newStudents = students.map((s) => {
+                if (s.id === student.id) {
+                  return {
+                    ...s,
+                    isOnLeave: true,
+                    attendanceStatus: 2,
+                  };
+                }
+                return s;
+              });
+              setStudents(newStudents);
+            };
 
-          const onClickIsLateArrival = () => {
-            const newStudents = students.map((s) => {
-              if (s.id === student.id) {
-                return {
-                  ...s,
-                  isLateArrival: true,
-                };
-              }
-              return s;
-            });
-            setStudents(newStudents);
-          };
+            const onClickIsLateArrival = () => {
+              const newStudents = students.map((s) => {
+                if (s.id === student.id) {
+                  return {
+                    ...s,
+                    isLateArrival: true,
+                    attendanceStatus: 3,
+                  };
+                }
+                return s;
+              });
+              setStudents(newStudents);
+            };
+            return (
+              <TableRow
+                key={student.id}
+                style={{
+                  backgroundColor:
+                    student.attendanceStatus === 1
+                      ? "#d1fae5"
+                      : student.attendanceStatus === 2
+                      ? "#fef3c7"
+                      : student.attendanceStatus === 3
+                      ? "#fee2e2"
+                      : "transparent",
+                }}
+              >
+                <TableCell className="font-medium text-lg">
+                  {student.name}
+                </TableCell>
+                <TableCell>
+                  <div className=" flex gap-4">
+                    <Button
+                      className=" cursor-pointer"
+                      variant="outline"
+                      size="sm"
+                      onClick={onClickIsPresent}
+                    >
+                      已到
+                    </Button>
 
-          return (
-            <li key={student.id} className=" flex gap-4">
-              <p>{student.name}</p>
-              <div className=" flex gap-4">
-                {!isPresent && <button onClick={onClickIsPresent}>已到</button>}
-                {!isOnLeave && <button onClick={onClickIsOnLeave}>请假</button>}
-                {!isLateArrival && (
-                  <button onClick={onClickIsLateArrival}>晚到</button>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                    <Button
+                      className=" cursor-pointer"
+                      variant="outline"
+                      size="sm"
+                      onClick={onClickIsOnLeave}
+                    >
+                      请假
+                    </Button>
+
+                    <Button
+                      className=" cursor-pointer"
+                      variant="outline"
+                      size="sm"
+                      onClick={onClickIsLateArrival}
+                    >
+                      晚到
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      <div className="flex justify-end mt-4">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button className=" cursor-pointer">生成考勤</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>考勤</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  <pre className=" whitespace-pre-wrap text-left">
+                    {textTemplate}
+                  </pre>
+                  <div className="flex justify-end">
+                    <Button
+                      className="ml-auto cursor-pointer mt-4"
+                      size={"sm"}
+                      onClick={() =>
+                        navigator.clipboard.writeText(textTemplate)
+                      }
+                    >
+                      复制文本
+                    </Button>
+                  </div>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction>确认</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Button className="ml-4 cursor-pointer" onClick={onClear}>
+          清除
+        </Button>
+      </div>
     </div>
   );
 }
