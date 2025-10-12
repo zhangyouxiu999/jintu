@@ -1,3 +1,5 @@
+"use client";
+
 export default function Home() {
   // 谢艾敉
   // 李春霏
@@ -46,11 +48,11 @@ export default function Home() {
       <h1>点名</h1>
       <ul>
         {students.map((student) => (
-          <>
-            <li key={student.id}>{student.name}</li>
+          <li key={student.id}>
+            <div>{student.name}</div>
             <button onClick={() => alert("已到")}>已到</button>
             <button>请假</button>
-          </>
+          </li>
         ))}
       </ul>
     </div>
