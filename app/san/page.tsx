@@ -27,7 +27,7 @@ export default function Home() {
   const [students, setStudents] = useState([
     {
       id: "001",
-      name: "谢梓轶",
+      name: "王梓成",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -35,7 +35,7 @@ export default function Home() {
     },
     {
       id: "002",
-      name: "李依柔",
+      name: "秦奥开",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -43,7 +43,7 @@ export default function Home() {
     },
     {
       id: "003",
-      name: "刘佳摇",
+      name: "蔡智帆",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -51,7 +51,7 @@ export default function Home() {
     },
     {
       id: "004",
-      name: "谢艾敉",
+      name: "王滢喆",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -59,7 +59,7 @@ export default function Home() {
     },
     {
       id: "005",
-      name: "李春霏",
+      name: "王星照",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -67,7 +67,7 @@ export default function Home() {
     },
     {
       id: "006",
-      name: "曹紫梦",
+      name: "李依默",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -75,7 +75,7 @@ export default function Home() {
     },
     {
       id: "007",
-      name: "李子涵",
+      name: "刁宇帆",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -83,7 +83,7 @@ export default function Home() {
     },
     {
       id: "008",
-      name: "赵梓温",
+      name: "马卫尚",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -91,7 +91,7 @@ export default function Home() {
     },
     {
       id: "009",
-      name: "景晗彧",
+      name: "刘依初",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -99,7 +99,7 @@ export default function Home() {
     },
     {
       id: "010",
-      name: "赵甜歌",
+      name: "李雨梦",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -107,7 +107,7 @@ export default function Home() {
     },
     {
       id: "011",
-      name: "王一丁",
+      name: "王立园",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -115,7 +115,7 @@ export default function Home() {
     },
     {
       id: "012",
-      name: "张子丰",
+      name: "孟倞月",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -123,7 +123,7 @@ export default function Home() {
     },
     {
       id: "013",
-      name: "郝晨浩",
+      name: "彭冠谋",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -131,7 +131,7 @@ export default function Home() {
     },
     {
       id: "014",
-      name: "谢云译",
+      name: "石奥生",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -139,7 +139,7 @@ export default function Home() {
     },
     {
       id: "015",
-      name: "邢宇彤",
+      name: "王佳特",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -147,7 +147,7 @@ export default function Home() {
     },
     {
       id: "016",
-      name: "王秋寒",
+      name: "赵梓淳",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -155,7 +155,7 @@ export default function Home() {
     },
     {
       id: "017",
-      name: "李依梦",
+      name: "王雨禾",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -163,7 +163,7 @@ export default function Home() {
     },
     {
       id: "018",
-      name: "侯禹辰",
+      name: "曹家赫",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -171,7 +171,7 @@ export default function Home() {
     },
     {
       id: "019",
-      name: "邢依诺",
+      name: "潘诗文",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -179,7 +179,7 @@ export default function Home() {
     },
     {
       id: "020",
-      name: "邢董澈",
+      name: "赵倚钒",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -187,7 +187,7 @@ export default function Home() {
     },
     {
       id: "021",
-      name: "曹紫寒",
+      name: "周子豪",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -195,7 +195,7 @@ export default function Home() {
     },
     {
       id: "022",
-      name: "朱佑聪",
+      name: "魏守阳",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -203,71 +203,7 @@ export default function Home() {
     },
     {
       id: "023",
-      name: "王奥成",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "024",
-      name: "张家帆",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "025",
-      name: "鲍冠杰",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "026",
-      name: "牛偲墁",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "027",
-      name: "刘亦泽",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "028",
-      name: "刘宜函",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "029",
-      name: "王一鸣",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "030",
-      name: "陈星宇",
-      isPresent: false,
-      isOnLeave: false,
-      isLateArrival: false,
-      attendanceStatus: 0,
-    },
-    {
-      id: "031",
-      name: "冯楚尧",
+      name: "赵建聪",
       isPresent: false,
       isOnLeave: false,
       isLateArrival: false,
@@ -276,14 +212,14 @@ export default function Home() {
   ]);
 
   useEffect(() => {
-    const storedStudents = localStorage.getItem("students/2");
+    const storedStudents = localStorage.getItem("students/3");
     if (storedStudents) {
       setStudents(JSON.parse(storedStudents));
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("students/2", JSON.stringify(students));
+    localStorage.setItem("students/3", JSON.stringify(students));
   }, [students]);
 
   function onClear() {
@@ -295,7 +231,7 @@ export default function Home() {
       attendanceStatus: 0,
     }));
     setStudents(clearedStudents);
-    localStorage.removeItem("students/2");
+    localStorage.removeItem("students/3");
   }
 
   function getGreeting() {
@@ -349,7 +285,7 @@ export default function Home() {
   //   alert(textTemplate);
   // };
 
-  const classTitle = "佰盈二班";
+  const classTitle = "佰盈三班";
   const presentNames = students
     .filter((s) => s.attendanceStatus === 1)
     .map((s) => s.name);
