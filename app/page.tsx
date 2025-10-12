@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const [students, setStudents] = useState([
@@ -317,9 +318,17 @@ export default function Home() {
           <AlertDialogHeader>
             <AlertDialogTitle>考勤</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <pre className=" whitespace-pre-wrap text-left">
-                {textTemplate}
-              </pre>
+              <div>
+                <pre className=" whitespace-pre-wrap text-left">
+                  {textTemplate}
+                </pre>
+                <Button
+                  className="ml-auto"
+                  onClick={() => navigator.clipboard.writeText(textTemplate)}
+                >
+                  复制文本
+                </Button>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
