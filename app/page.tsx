@@ -325,32 +325,6 @@ export default function Home() {
     return greeting;
   }
 
-  // const onPush = () => {
-  //   const classTitle = "佰盈二班";
-  //   const presentNames = students.filter((s) => s.isPresent).map((s) => s.name);
-  //   const onLeaveNames = students.filter((s) => s.isOnLeave).map((s) => s.name);
-  //   const lateArrivalNames = students
-  //     .filter((s) => s.isLateArrival)
-  //     .map((s) => s.name);
-  //   const notArrivedNames = students
-  //     .filter((s) => !s.isOnLeave && !s.isPresent)
-  //     .map((s) => s.name);
-  //   const data = getGreeting();
-  //   const textTemplate = `
-  //     ${data}
-  //     ${classTitle}
-  //     应到: ${students.length}人
-  //     实到: ${presentNames.length}人
-  //     请假: ${onLeaveNames.join(", ")}
-  //     晚到：${lateArrivalNames.join(", ")}
-  //     未到：${notArrivedNames.join(", ")}
-  //     已到: ${presentNames.join(", ")}
-  //     教学老师到岗情况：二班老师已到岗
-  //   `;
-
-  //   alert(textTemplate);
-  // };
-
   const classTitle = "佰盈二班";
   const presentNames = students
     .filter((s) => s.attendanceStatus === 1)
@@ -365,18 +339,25 @@ export default function Home() {
     .filter((s) => s.attendanceStatus === 0)
     .map((s) => s.name);
   const data = getGreeting();
-  const textTemplate = `
-${data}
+
+  const date = new Date();
+  const hour = date.getHours();
+  const textTemplate =
+    hour < 20
+      ? `${data}
 ${classTitle}
 应到: ${students.length}人
 实到: ${presentNames.length}人 
-请假: ${onLeaveNames.join(", ")}
-晚到：${lateArrivalNames.join(", ")}
-未到：${notArrivedNames.join(", ")}
+请假: ${onLeaveNames.join(" ")}
+晚到：${lateArrivalNames.join(" ")}
+未到：${notArrivedNames.join(" ")}
+教学老师到岗情况：${classTitle}老师已到岗
+`
+      : `${data}
+${classTitle}
+已到: ${presentNames.join(", ")} ${presentNames.length}人
 教学老师到岗情况：${classTitle}老师已到岗
 `;
-
-  // 已到: ${presentNames.join(", ")}
 
   return (
     <div className=" m-auto w-fit">
