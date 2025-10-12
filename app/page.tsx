@@ -48,7 +48,7 @@ export default function Home() {
         {students.map((student) => (
           <>
             <li key={student.id}>{student.name}</li>
-            <button>已到</button>
+            <button onClick={() => alert("已到")}>已到</button>
             <button>请假</button>
           </>
         ))}
