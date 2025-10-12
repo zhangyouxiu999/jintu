@@ -298,16 +298,16 @@ export default function Home() {
     .map((s) => s.name);
   const data = getGreeting();
   const textTemplate = `
-      ${data}
-      ${classTitle}
-      应到: ${students.length}人
-      实到: ${presentNames.length}人 
-      请假: ${onLeaveNames.join(", ")}
-      晚到：${lateArrivalNames.join(", ")}
-      未到：${notArrivedNames.join(", ")}
-      已到: ${presentNames.join(", ")}
-      教学老师到岗情况：${classTitle}老师已到岗
-    `;
+${data}
+${classTitle}
+应到: ${students.length}人
+实到: ${presentNames.length}人 
+请假: ${onLeaveNames.join(", ")}
+晚到：${lateArrivalNames.join(", ")}
+未到：${notArrivedNames.join(", ")}
+已到: ${presentNames.join(", ")}
+教学老师到岗情况：${classTitle}老师已到岗
+`;
 
   return (
     <div className=" m-auto w-fit">
