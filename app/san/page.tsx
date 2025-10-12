@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function Home() {
   const [students, setStudents] = useState([
@@ -437,9 +439,10 @@ ${classTitle}
                     <Button
                       className="ml-auto cursor-pointer mt-4"
                       size={"sm"}
-                      onClick={() =>
-                        navigator.clipboard.writeText(textTemplate)
-                      }
+                      onClick={() => {
+                        navigator.clipboard.writeText(textTemplate);
+                        toast("复制成功");
+                      }}
                     >
                       复制文本
                     </Button>
@@ -457,6 +460,7 @@ ${classTitle}
           清除
         </Button>
       </div>
+      <Toaster />
     </div>
   );
 }
