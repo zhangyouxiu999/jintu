@@ -317,7 +317,9 @@ export default function Home() {
           <AlertDialogHeader>
             <AlertDialogTitle>考勤</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <pre className=" whitespace-pre-wrap">{textTemplate}</pre>
+              <pre className=" whitespace-pre-wrap text-left">
+                {textTemplate}
+              </pre>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
