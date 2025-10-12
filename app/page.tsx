@@ -360,7 +360,7 @@ export default function Home() {
     .filter((s) => s.attendanceStatus === 3)
     .map((s) => s.name);
   const notArrivedNames = students
-    .filter((s) => !s.isOnLeave && !s.isPresent)
+    .filter((s) => s.attendanceStatus === 0)
     .map((s) => s.name);
   const data = getGreeting();
   const textTemplate = `
