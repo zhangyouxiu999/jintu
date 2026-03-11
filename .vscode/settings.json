@@ -1,0 +1,5 @@
+{
+  "kiroAgent.configureMCP": "Disabled",
+  "npm.scriptRunner": "npm",
+  "npm.autoDetect": "on"
+}

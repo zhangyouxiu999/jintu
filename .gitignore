@@ -19,6 +19,16 @@
 
 # production
 /build
+/nas_deploy/
+nas_deploy.zip
+
+# runtime / temp
+.pm2/
+db-export/
+db-export-temp/
+
+# env backup (sensitive)
+OLD_ENV_LOCAL
 
 # misc
 .DS_Store

@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  server: {
-    host: "0.0.0.0",
-  },
+  output: "standalone",
   /* config options here */
   typescript: {
     // 忽略构建时的 TypeScript 错误

@@ -1,0 +1,19 @@
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY standalone/ ./
+COPY static/ ./.next/static
+COPY public/ ./public
+
+# standalone 中可能包含开发机架构的 sharp 原生模块（如 arm64），
+# 删除后重新安装，确保匹配当前容器架构
+RUN rm -rf node_modules/@img/sharp-* && \
+    npm install --no-save sharp 2>/dev/null || true
+
+EXPOSE 19080
+ENV PORT=19080
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]

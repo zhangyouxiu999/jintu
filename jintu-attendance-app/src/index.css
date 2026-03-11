@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  考勤 App · 健康风设计系统 (2026)
+  参考健康饮食类 UI：温暖背景、柔和圆角、卡片化、清晰层次
+*/
+:root {
+  /* === 网格 (8dp) === */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-56: 56px;
+
+  --page-x: var(--space-20);
+  --page-y: var(--space-20);
+  /* 健康风：略大圆角，更柔和 */
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+  --touch-target: 48px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* === 健康风配色：温暖背景 + 青绿主色 === */
+  --bg: #f6f5f2;
+  --bg-subtle: #efede8;
+  --surface: #fefefe;
+  --surface-2: #faf9f6;
+  --surface-hover: #f2f0eb;
+
+  --on-bg: #1c1b18;
+  --on-surface: #1c1b18;
+  --on-surface-variant: #5c5a54;
+  --on-surface-muted: #8c8982;
+  --outline: #e8e6e1;
+  --outline-variant: #eeebe6;
+
+  /* 主色：靛紫，按钮与强调 */
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --on-primary: #ffffff;
+  --primary-container: #e0e7ff;
+  --on-primary-container: #3730a3;
+
+  /* 语义色：保持清晰，略柔和 */
+  --success: #059669;
+  --success-container: #d1fae5;
+  --success-border: #6ee7b7;
+  --leave: #ea580c;
+  --leave-container: #ffedd5;
+  --leave-border: #fdba74;
+  --late: #0284c7;
+  --late-container: #e0f2fe;
+  --late-border: #7dd3fc;
+  --surface-border: #e0ddd8;
+  --error: #dc2626;
+  --error-container: #fee2e2;
+
+  /* 玻璃拟态：暖白 */
+  --glass-bg: rgba(254, 254, 253, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-blur: 20px;
+}
+
+@layer base {
+  * {
+    border-color: var(--outline);
+  }
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    font-family: "Plus Jakarta Sans", "Roboto", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    color: var(--on-surface);
+    background: var(--bg);
+    min-height: 100vh;
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: rgba(79, 70, 229, 0.2);
+    color: var(--on-surface);
+  }
+  button, a, [role="button"], input, select, textarea {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+}
+
+/* 类型比例 · 规范字号 */
+.text-display { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.3; color: var(--on-surface); }
+.text-title   { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--on-surface); }
+.text-body    { font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--on-surface); }
+.text-label   { font-size: 14px; font-weight: 500; line-height: 1.45; color: var(--on-surface); }
+.text-caption { font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--on-surface-muted); }
+.text-tiny    { font-size: 11px; font-weight: 500; line-height: 1.45; }
+
+/* 玻璃顶栏/底栏 */
+.glass-bar {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-color: var(--glass-border);
+}
+
+/* 健康风卡片：柔和阴影 + 圆角 */
+.card-soft {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 12px rgba(28, 27, 24, 0.04), 0 1px 3px rgba(28, 27, 24, 0.03);
+  border: 1px solid var(--outline-variant);
+}
+
+/* 统计/状态小卡片（如应到/实到/请假/晚到） */
+.stat-pill {
+  border-radius: var(--radius-md);
+  padding: var(--space-8) var(--space-12);
+  font-weight: 500;
+  text-align: center;
+}

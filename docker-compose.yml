@@ -1,0 +1,25 @@
+# 本地 / 绿联 NAS 通用：app 与 mongodb 同网络，连接地址必须为 mongodb://mongodb:27017/school_cms
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: jintu-mongodb
+    restart: always
+    volumes:
+      - ./data/db:/data/db
+    ports:
+      - "27017:27017"
+
+  app:
+    build: .
+    container_name: jintu-admin
+    restart: always
+    ports:
+      - "19080:19080"
+    env_file:
+      - .env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/school_cms
+      - NODE_ENV=production
+      - PORT=19080
+    depends_on:
+      - mongodb

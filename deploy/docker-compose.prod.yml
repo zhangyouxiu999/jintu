@@ -1,0 +1,51 @@
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: jintu-mongodb
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
+  seed:
+    image: mongo:4.4
+    container_name: jintu-seed
+    depends_on:
+      - mongodb
+    volumes:
+      - ./dbseed:/dbseed:ro
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        echo '[seed] 等待 MongoDB 就绪...'
+        for i in $$(seq 1 30); do
+          mongo mongodb:27017 --eval 'db.runCommand({ping:1})' >/dev/null 2>&1 && break
+          sleep 2
+        done
+        COUNT=$$(mongo mongodb:27017/school_cms --quiet --eval 'db.students.countDocuments({})' 2>/dev/null || echo '0')
+        if [ "$$COUNT" = "0" ] || [ -z "$$COUNT" ]; then
+          echo '[seed] 首次部署，导入预置数据...'
+          mongorestore --host mongodb --db school_cms /dbseed --quiet
+          echo '[seed] 数据导入完成'
+        else
+          echo "[seed] 数据库已有数据（$$COUNT 条学生记录），跳过导入"
+        fi
+
+  app:
+    build: .
+    container_name: jintu-admin
+    restart: always
+    ports:
+      - "${APP_PORT:-19080}:19080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/school_cms
+      - NODE_ENV=production
+      - PORT=19080
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-jintu123}
+    depends_on:
+      - mongodb
+
+volumes:
+  mongo_data:

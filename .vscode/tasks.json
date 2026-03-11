@@ -1,0 +1,49 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "考勤 App: dev",
+      "type": "npm",
+      "script": "dev",
+      "path": "jintu-attendance-app/",
+      "group": "build",
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "考勤 App: build",
+      "type": "npm",
+      "script": "build",
+      "path": "jintu-attendance-app/",
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "考勤 App: preview",
+      "type": "npm",
+      "script": "preview",
+      "path": "jintu-attendance-app/",
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "考勤 App: cap:sync",
+      "type": "npm",
+      "script": "cap:sync",
+      "path": "jintu-attendance-app/",
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "考勤 App: ios",
+      "type": "npm",
+      "script": "ios",
+      "path": "jintu-attendance-app/",
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "考勤 App: android",
+      "type": "npm",
+      "script": "android",
+      "path": "jintu-attendance-app/",
+      "presentation": { "reveal": "always" }
+    }
+  ]
+}
