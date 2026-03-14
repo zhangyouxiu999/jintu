@@ -1,149 +1,124 @@
-import { useState, useRef, useEffect } from 'react'
-import gsap from 'gsap'
-import { Megaphone, ChevronDown, ChevronUp, Send, Trash2 } from 'lucide-react'
+import { Megaphone, X, ChevronDown } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import type { AnnouncementEntity } from '@/types'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { panelOpen, panelClose, DURATION, EASE } from '@/lib/gsap'
-
-type ExpirationType = 'today' | 'permanent' | 'custom'
+import { cn } from '@/lib/utils'
 
 interface AnnouncementPanelProps {
   list: AnnouncementEntity[]
-  onAdd: (content: string, type: ExpirationType) => void
   onDelete: (id: string) => void
 }
 
-export default function AnnouncementPanel({ list, onAdd, onDelete }: AnnouncementPanelProps) {
-  const [visible, setVisible] = useState(false)
-  const [text, setText] = useState('')
-  const [expirationType, setExpirationType] = useState<ExpirationType>('today')
-  const [submitting, setSubmitting] = useState(false)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const formRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
-
-  const handleSubmit = async () => {
-    const content = text.trim()
-    if (!content || submitting) return
-    setSubmitting(true)
-    try {
-      await onAdd(content, expirationType)
-      setText('')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const toggle = () => {
-    if (visible) {
-      if (panelRef.current) {
-        gsap.to(panelRef.current, {
-          ...panelClose.to,
-          onComplete: () => setVisible(false),
-        })
-      } else {
-        setVisible(false)
-      }
-    } else {
-      setVisible(true)
-    }
-  }
+export default function AnnouncementPanel({ list, onDelete }: AnnouncementPanelProps) {
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const [isSticky, setIsSticky] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
-    if (!visible) return
-    const panel = panelRef.current
-    const form = formRef.current
-    const listEl = listRef.current
-    if (!panel) return
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(panel, panelOpen.from, panelOpen.to)
-      if (form) gsap.fromTo(form, { opacity: 0 }, { opacity: 1, duration: DURATION.fast, delay: 0.03, ease: EASE.out })
-      if (listEl) {
-        const items = listEl.querySelectorAll('li')
-        gsap.fromTo(items, { opacity: 0 }, { opacity: 1, duration: DURATION.fast, stagger: 0.02, delay: 0.04, ease: EASE.out })
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsSticky(!entry.isIntersecting)
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0,
       }
-    })
-    return () => ctx.revert()
-  }, [visible, list.length])
-
-  const latestText = list.length > 0 ? list[list.length - 1].content : '暂无公告'
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <div className="relative border-b border-[var(--outline-variant)] bg-[var(--primary-container)]/15">
-      <button
-        type="button"
-        className="flex min-h-9 w-full items-center gap-2 px-[var(--page-x)] py-2 text-left text-caption text-[var(--on-surface)] active:bg-[var(--primary-container)]/25"
-        onClick={toggle}
-        aria-label={visible ? '收起公告' : '展开公告'}
+    <>
+      <div ref={sentinelRef} className="h-0 w-full" aria-hidden />
+      <section
+        className={cn(
+          'sticky z-20 mb-3 overflow-hidden rounded-[20px] bg-white shadow-[0_1px_0_rgba(60,60,67,0.06)] transition-shadow duration-200',
+          isSticky && 'shadow-[0_2px_12px_rgba(0,0,0,0.08)]'
+        )}
+        style={{ top: 'var(--space-12, 12px)' }}
+        aria-label="公告"
       >
-        <Megaphone className="h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-label font-medium">
-          {latestText}
-        </span>
-        {visible ? <ChevronUp className="h-4 w-4 shrink-0 text-[var(--on-surface-muted)]" /> : <ChevronDown className="h-4 w-4 shrink-0 text-[var(--on-surface-muted)]" />}
-      </button>
-      {visible && (
-        <div
-          ref={panelRef}
-          className="absolute left-0 right-0 top-full z-50 overflow-hidden border-b border-[var(--outline-variant)] bg-[var(--surface)] shadow-elevation-2"
-          style={{ willChange: 'opacity' }}
+        {/* 点击整行展开/收起 */}
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="flex w-full items-center gap-2 px-4 py-3 text-left active:opacity-90"
+          aria-expanded={expanded}
+          aria-label={expanded ? '收起公告' : '展开公告'}
         >
-          <div className="max-h-[60vh] overflow-auto px-[var(--page-x)] pb-3 pt-2">
-            <div ref={formRef} className="flex gap-2 items-center">
-              <Input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="输入新公告…"
-                className="h-7 min-h-0 flex-1 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] py-0 pl-2.5 pr-2 text-caption"
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              />
-              <select
-                value={expirationType}
-                onChange={(e) => setExpirationType(e.target.value as ExpirationType)}
-                className="w-14 shrink-0 rounded-[var(--radius-sm)] border border-[var(--outline)] bg-[var(--surface-2)] px-1.5 py-1.5 text-tiny text-[var(--on-surface)]"
-              >
-                <option value="today">今日</option>
-                <option value="permanent">永久</option>
-              </select>
-              <Button
-                type="button"
-                size="icon"
-                className="h-7 w-7 min-h-0 shrink-0 rounded-[var(--radius-sm)] bg-[var(--primary)] py-0 text-[var(--on-primary)]"
-                onClick={handleSubmit}
-                disabled={!text.trim() || submitting}
-                aria-label="发布"
-              >
-                <Send className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="mt-2.5 border-t border-[var(--outline-variant)] pt-2">
-              {list.length === 0 ? (
-                <p className="py-2 text-caption text-[var(--on-surface-muted)]">暂无公告，上方输入后发布</p>
-              ) : (
-                <>
-                  <p className="mb-1.5 text-tiny font-medium text-[var(--on-surface-muted)]">已发布 · {list.length} 条</p>
-                  <ul ref={listRef} className="max-h-40 space-y-1 overflow-y-auto">
-                    {list.map((a, i) => (
-                      <li
-                        key={a.id}
-                        className="flex items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--surface-2)] py-1.5 pl-2.5 pr-1.5"
+          <Megaphone className="h-4 w-4 shrink-0 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
+          <span className="text-[13px] font-semibold text-[var(--on-surface-muted)]">公告</span>
+          <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--on-surface-muted)]">
+            {list.length}
+          </span>
+          <ChevronDown
+            className={cn(
+              'ml-auto h-4 w-4 shrink-0 text-[var(--on-surface-muted)] transition-transform duration-200',
+              expanded && 'rotate-180'
+            )}
+            strokeWidth={1.5}
+          />
+        </button>
+
+        {/* 展开时显示列表 */}
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows] duration-200 ease-out',
+            expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            {list.length > 0 ? (
+              <div className="border-t border-[var(--outline-variant)] px-4 py-3">
+                <ul className="space-y-1.5 max-h-[240px] overflow-y-auto">
+                  {list.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center gap-2 rounded-[10px] bg-[var(--surface-2)]/80 py-1.5 pl-3 pr-2"
+                    >
+                      <span className="min-w-0 flex-1 break-words text-[14px] leading-snug text-[var(--on-surface)]">
+                        {a.content}
+                      </span>
+                      <span
+                        className={cn(
+                          'shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium',
+                          a.expirationType === 'permanent'
+                            ? 'bg-[var(--surface-2)] text-[var(--on-surface-muted)]'
+                            : 'bg-[var(--primary-container)] text-[var(--primary)]'
+                        )}
                       >
-                        <span className="w-4 shrink-0 text-tiny tabular-nums text-[var(--on-surface-muted)]">{i + 1}</span>
-                        <span className="min-w-0 flex-1 break-words text-caption leading-snug text-[var(--on-surface)]">{a.content}</span>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 min-h-0 shrink-0 rounded-full py-0 text-[var(--on-surface-muted)] hover:text-[var(--error)]" onClick={() => onDelete(a.id)} aria-label="删除">
-                          <Trash2 className="h-2.5 w-2.5" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
+                        {a.expirationType === 'permanent' ? '永久' : '今日'}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(a.id)
+                        }}
+                        className="h-8 w-8 shrink-0 rounded-full p-0 text-[var(--on-surface-muted)] active:text-[var(--error)]"
+                        aria-label="删除"
+                      >
+                        <X className="h-3.5 w-3.5" strokeWidth={2} />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="border-t border-[var(--outline-variant)] px-4 py-4 text-center text-[13px] text-[var(--on-surface-muted)]">
+                暂无公告
+              </div>
+            )}
           </div>
         </div>
-      )}
-    </div>
+      </section>
+    </>
   )
 }

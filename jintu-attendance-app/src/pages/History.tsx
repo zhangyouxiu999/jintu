@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, History as HistoryIcon, Download, ChevronDown, ChevronUp } from 'lucide-react'
+import { History as HistoryIcon, Download, ChevronDown, ChevronUp } from 'lucide-react'
 import { animateStagger } from '@/lib/gsap'
 import * as attendanceStore from '@/store/attendance'
 import * as classesStore from '@/store/classes'
@@ -8,6 +8,7 @@ import * as studentsStore from '@/store/students'
 import type { AttendanceSnapshot } from '@/types'
 import { buildReportTextFromSnapshot, getReportDateLabelFromDate } from '@/lib/reportText'
 import { PERIOD_NAMES } from '@/lib/period'
+import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -119,26 +120,31 @@ export default function History() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
-      <header className="glass-bar sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-[var(--outline-variant)] px-[var(--page-x)] shadow-elevation-1" style={{ paddingTop: 'var(--safe-top)', minHeight: 'calc(56px + var(--safe-top))' }}>
-        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-variant)] active:scale-95 active:bg-[var(--surface-hover)]" onClick={() => navigate(-1)} aria-label="返回">
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="min-w-0 flex-1 truncate text-title font-semibold text-[var(--on-surface)]">{classId && currentClass ? `${currentClass.name}历史考勤` : '本地历史'}</h1>
-        {classId && list.length > 0 && (
-          <Button variant="outline" size="sm" className="h-6 shrink-0 rounded-[var(--radius-sm)] border-[var(--outline)] px-1.5 text-tiny text-[var(--on-surface)]" onClick={() => setExportConfirmOpen(true)}>
-            <Download className="mr-1 h-2.5 w-2.5" /> 导出
-          </Button>
-        )}
-      </header>
+      <PageHeader
+        title={classId && currentClass ? `${currentClass.name}历史考勤` : '本地历史'}
+        onBack={() => navigate(-1)}
+        right={
+          classId && list.length > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 shrink-0 rounded-[var(--radius-sm)] border-[var(--outline)] px-1.5 text-tiny text-[var(--on-surface)]"
+              onClick={() => setExportConfirmOpen(true)}
+            >
+              <Download className="mr-1 h-2.5 w-2.5" /> 导出
+            </Button>
+          ) : null
+        }
+      />
 
-      <main className="px-[var(--page-x)] py-4">
+      <main className="px-4 py-4">
         {!classId && classes.length > 0 && (
-          <div className="mb-3 card-soft p-4">
-            <p className="text-label font-medium text-[var(--on-surface)]">选择班级</p>
-            <p className="mt-0.5 text-caption text-[var(--on-surface-variant)]">查看该班级已确认的考勤记录</p>
-            <div ref={classButtonsRef} className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mb-3 rounded-2xl bg-[var(--surface)] border border-[var(--outline-variant)] p-4">
+            <p className="text-[15px] font-semibold tracking-tight text-[var(--on-surface)]">选择班级</p>
+            <p className="mt-0.5 text-[13px] text-[var(--on-surface-muted)]">查看该班级已确认的考勤记录</p>
+            <div ref={classButtonsRef} className="mt-3 flex flex-wrap gap-2">
               {classes.map((c) => (
-                <Button key={c.id} variant="outline" size="sm" className="h-7 rounded-[var(--radius-sm)] border-[var(--outline)] px-2.5 text-tiny text-[var(--on-surface)]" onClick={() => navigate(`/history/${c.id}`)}>{c.name}</Button>
+                <Button key={c.id} variant="outline" size="sm" className="h-9 rounded-[12px] border-[var(--outline)] bg-[var(--surface)] px-4 text-[13px] font-medium text-[var(--on-surface-variant)] transition-all duration-75 active:scale-[0.96] active:opacity-80" onClick={() => navigate(`/history/${c.id}`)}>{c.name}</Button>
               ))}
             </div>
           </div>
@@ -149,15 +155,15 @@ export default function History() {
             {loading ? (
               <div className="min-h-[120px] py-12 text-center" aria-busy="true" />
             ) : list.length === 0 ? (
-              <div className="card-soft py-12 text-center">
-                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary)]/20">
-                  <HistoryIcon className="h-7 w-7 text-[var(--primary)]" />
+              <div className="rounded-[22px] bg-[var(--surface)] border border-[var(--outline-variant)] py-14 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/60">
+                  <HistoryIcon className="h-7 w-7 text-[var(--primary)]" strokeWidth={1.5} />
                 </div>
-                <p className="text-title text-[var(--on-surface)]">暂无已确认考勤记录</p>
-                <p className="mt-1 text-caption">在点名页点击「报告」→「复制并关闭」后会出现在此</p>
+                <p className="text-[17px] font-semibold tracking-tight text-[var(--on-surface)]">暂无已确认考勤记录</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--on-surface-muted)] px-6">在点名页点击「报告」→「复制并关闭」后会出现在此</p>
               </div>
             ) : (
-              <ul ref={snapshotListRef} className="space-y-1.5">
+              <ul ref={snapshotListRef} className="space-y-2">
                 {(() => {
                   const byDate: Record<string, AttendanceSnapshot[]> = {}
                   for (const snap of list) {
@@ -169,26 +175,26 @@ export default function History() {
                     const periods = byDate[date]
                     const isExpanded = expandedDate === date
                     return (
-                      <li key={date} className="card-soft overflow-hidden">
+                      <li key={date} className="rounded-[18px] bg-[var(--surface)] border border-[var(--outline-variant)] overflow-hidden">
                         <button
                           type="button"
                           onClick={() => setExpandedDate(isExpanded ? null : date)}
-                          className="flex min-h-10 w-full items-center justify-between px-3 py-2.5 text-left active:bg-[var(--surface-hover)]"
+                          className="flex min-h-[50px] w-full items-center justify-between px-4 py-3.5 text-left transition-all duration-75 active:bg-[var(--surface-2)]/80 active:scale-[0.99]"
                         >
-                          <span className="text-label font-semibold text-[var(--on-surface)]">{date}</span>
-                          {isExpanded ? <ChevronUp className="h-4 w-4 text-[var(--on-surface-variant)]" /> : <ChevronDown className="h-4 w-4 text-[var(--on-surface-variant)]" />}
+                          <span className="text-[15px] font-semibold text-[var(--on-surface)]">{date}</span>
+                          {isExpanded ? <ChevronUp className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} /> : <ChevronDown className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} />}
                         </button>
                         {isExpanded && (
-                          <ul className="border-t border-[var(--outline-variant)] bg-[var(--surface-2)] px-2 pb-1.5 pt-0.5">
+                          <ul className="border-t border-[var(--outline-variant)]/80 bg-[var(--surface-2)]/60 px-2 pb-1.5 pt-0.5">
                             {periods.map((snap, i) => (
-                              <li key={snap.id} className={i > 0 ? 'border-t border-[var(--outline-variant)]' : ''}>
+                              <li key={snap.id} className={i > 0 ? 'border-t border-[var(--outline-variant)]/60' : ''}>
                                 <button
                                   type="button"
                                   onClick={() => setDetailSnap(snap)}
-                                  className="flex min-h-9 w-full items-center justify-between rounded-[var(--radius-sm)] px-2.5 py-2 text-left active:bg-[var(--surface-hover)]"
+                                  className="flex min-h-[44px] w-full items-center justify-between rounded-[14px] px-3 py-2.5 text-left transition-all duration-75 active:bg-[var(--surface-2)] active:scale-[0.99]"
                                 >
-                                  <span className="text-caption text-[var(--on-surface)]">{PERIOD_NAMES[snap.period] ?? '—'}</span>
-                                  <span className="text-tiny tabular-nums text-[var(--on-surface-variant)]">实到 {Object.values(snap.statusMap).filter((s) => s === 1).length} 人</span>
+                                  <span className="text-[14px] font-medium text-[var(--on-surface-variant)]">{PERIOD_NAMES[snap.period] ?? '—'}</span>
+                                  <span className="text-[12px] tabular-nums text-[var(--on-surface-muted)]">实到 {Object.values(snap.statusMap).filter((s) => s === 1).length} 人</span>
                                 </button>
                               </li>
                             ))}
@@ -204,32 +210,31 @@ export default function History() {
         )}
 
         {!classId && classes.length === 0 && !loading && (
-          <div className="card-soft py-12 text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary)]/20">
-              <HistoryIcon className="h-7 w-7 text-[var(--primary)]" />
+          <div className="rounded-[22px] bg-[var(--surface)] border border-[var(--outline-variant)] py-14 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/60">
+              <HistoryIcon className="h-7 w-7 text-[var(--primary)]" strokeWidth={1.5} />
             </div>
-            <p className="text-title text-[var(--on-surface)]">暂无班级</p>
-            <p className="mt-1 text-caption">请先新增班级并完成考勤确认</p>
+            <p className="text-[17px] font-semibold tracking-tight text-[var(--on-surface)]">暂无班级</p>
+            <p className="mt-1.5 text-[13px] text-[var(--on-surface-muted)]">请先新增班级并完成考勤确认</p>
           </div>
         )}
 
         <Dialog open={exportConfirmOpen} onOpenChange={setExportConfirmOpen}>
-          <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+          <DialogContent>
             <DialogHeader className="text-center sm:text-center">
-              <DialogTitle className="text-title text-[var(--on-surface)]">确认导出</DialogTitle>
+              <DialogTitle className="text-dialog-title text-[var(--on-surface)]">确认导出</DialogTitle>
               <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
                 将当前班级历史考勤导出为 Excel 文件，共 {list.length} 条记录。
               </DialogDescription>
             </DialogHeader>
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setExportConfirmOpen(false)} className="rounded-[var(--radius-sm)] h-8 px-3 border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] text-caption">取消</Button>
+              <Button variant="outline" size="sm" onClick={() => setExportConfirmOpen(false)}>取消</Button>
               <Button
                 size="sm"
                 onClick={async () => {
                   setExportConfirmOpen(false)
                   await handleExport()
                 }}
-                className="rounded-[var(--radius-sm)] h-8 px-3 bg-[var(--primary)] !text-white text-caption"
               >
                 确认导出
               </Button>
@@ -239,9 +244,9 @@ export default function History() {
 
         {detailSnap && (
           <Dialog open={!!detailSnap} onOpenChange={(open) => !open && setDetailSnap(null)}>
-            <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 p-0 shadow-elevation-2">
+            <DialogContent className="p-0">
               <DialogHeader className="shrink-0 border-b border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-4 text-center sm:text-center">
-                <DialogTitle className="text-title text-[var(--on-surface)] block text-center">考勤报告</DialogTitle>
+                <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">考勤报告</DialogTitle>
                 <DialogDescription className="text-caption text-[var(--on-surface-muted)]">{getReportDateLabelFromDate(detailSnap.date, detailSnap.period)}</DialogDescription>
               </DialogHeader>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
@@ -250,7 +255,7 @@ export default function History() {
                 </pre>
               </div>
               <div className="shrink-0 flex justify-end gap-2 border-t border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-3">
-                <Button variant="outline" size="sm" onClick={() => setDetailSnap(null)} className="rounded-[var(--radius-sm)] h-8 px-3 border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] text-caption">关闭</Button>
+                <Button variant="outline" size="sm" onClick={() => setDetailSnap(null)}>关闭</Button>
                 <Button
                   size="sm"
                   onClick={async () => {
@@ -263,7 +268,6 @@ export default function History() {
                       showToast('复制失败，请重试', { variant: 'error' })
                     }
                   }}
-                  className="rounded-[var(--radius-sm)] h-8 px-3 bg-[var(--primary)] !text-white text-caption [&_svg]:!text-white"
                 >
                   复制
                 </Button>

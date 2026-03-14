@@ -1,10 +1,4 @@
-import { ChevronLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-
-const headerBase =
-  'glass-bar sticky top-0 z-50 flex h-14 items-center gap-2 border-b border-[var(--outline-variant)] px-[var(--page-x)] py-2 shadow-elevation-1'
-const headerStyle = { paddingTop: 'var(--safe-top)', minHeight: 'calc(56px + var(--safe-top))' } as const
+export const pageHeaderShellClassName = 'hidden'
 
 export interface PageHeaderProps {
   /** 标题（必填） */
@@ -20,31 +14,10 @@ export interface PageHeaderProps {
 }
 
 /**
- * 通用页面顶栏：可选返回按钮 + 标题 + 可选右侧区域。
- * 与各页现有的 glass-bar + ChevronLeft + h1 样式一致，便于统一替换。
+ * 旧页面头部已由全局 AppLayout 接管，保留空壳以兼容现有页面引用。
  */
-export function PageHeader({ title, onBack, right, titleClassName, className }: PageHeaderProps) {
-  return (
-    <header className={cn(headerBase, className)} style={headerStyle}>
-      {onBack != null ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-variant)] active:scale-95 active:bg-[var(--surface-hover)]"
-          onClick={onBack}
-          aria-label="返回"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-      ) : (
-        <div className="w-10 shrink-0" aria-hidden />
-      )}
-      <h1 className={cn('min-w-0 flex-1 truncate text-title font-semibold text-[var(--on-surface)]', titleClassName)}>
-        {title}
-      </h1>
-      {right != null ? <div className="shrink-0">{right}</div> : null}
-    </header>
-  )
+export function PageHeader(_props: PageHeaderProps) {
+  return null
 }
 
 export default PageHeader

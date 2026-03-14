@@ -2,6 +2,17 @@
  * App 本地持久化：localStorage，键前缀避免冲突。
  * 后续可替换为 Capacitor Preferences 或 SQLite。
  */
+import type {
+  AnnouncementEntity,
+  AttendanceSnapshot,
+  ClassEntity,
+  GradesDataByClass,
+  GradesForClass,
+  GradesPeriod,
+  ScheduleDataByClass,
+  StudentEntity,
+} from '@/types'
+
 const PREFIX = 'jintu_attendance_'
 
 export const STORAGE_KEYS = {
@@ -15,18 +26,6 @@ export const STORAGE_KEYS = {
   grades: PREFIX + 'grades',
   currentClassId: PREFIX + 'current_class_id',
 } as const
-
-/** 课程表：按班级 id 存，每班为 周一_一 -> 课程名 */
-export type ScheduleDataByClass = Record<string, Record<string, string>>
-
-/** 单期成绩单：科目 + 分数 */
-export type GradesForClass = { subjects: string[]; scores: Record<string, Record<string, string>> }
-
-/** 成绩单分期：id、名称 + 数据 */
-export type GradesPeriod = { id: string; name: string; subjects: string[]; scores: Record<string, Record<string, string>> }
-
-/** 按班级存：每班为分期列表（多张成绩单） */
-export type GradesDataByClass = Record<string, GradesPeriod[]>
 
 function save(key: string, data: unknown): void {
   try {
@@ -52,32 +51,32 @@ export const storage = {
   save,
   load,
 
-  saveClasses(data: unknown) {
+  saveClasses(data: ClassEntity[]) {
     save(STORAGE_KEYS.classes, data)
   },
-  loadClasses() {
-    return load<unknown>(STORAGE_KEYS.classes)
+  loadClasses(): ClassEntity[] | null {
+    return load<ClassEntity[]>(STORAGE_KEYS.classes)
   },
 
-  saveStudents(data: unknown) {
+  saveStudents(data: StudentEntity[]) {
     save(STORAGE_KEYS.students, data)
   },
-  loadStudents() {
-    return load<unknown>(STORAGE_KEYS.students)
+  loadStudents(): StudentEntity[] | null {
+    return load<StudentEntity[]>(STORAGE_KEYS.students)
   },
 
-  saveAttendance(data: unknown) {
+  saveAttendance(data: AttendanceSnapshot[]) {
     save(STORAGE_KEYS.attendance, data)
   },
-  loadAttendance() {
-    return load<unknown>(STORAGE_KEYS.attendance)
+  loadAttendance(): AttendanceSnapshot[] | null {
+    return load<AttendanceSnapshot[]>(STORAGE_KEYS.attendance)
   },
 
-  saveAnnouncements(data: unknown) {
+  saveAnnouncements(data: AnnouncementEntity[]) {
     save(STORAGE_KEYS.announcements, data)
   },
-  loadAnnouncements() {
-    return load<unknown>(STORAGE_KEYS.announcements)
+  loadAnnouncements(): AnnouncementEntity[] | null {
+    return load<AnnouncementEntity[]>(STORAGE_KEYS.announcements)
   },
 
   saveAppTitle(title: string) {

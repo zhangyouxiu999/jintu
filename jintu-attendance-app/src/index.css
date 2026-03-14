@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 /*
-  考勤 App · 健康风设计系统 (2026)
-  参考健康饮食类 UI：温暖背景、柔和圆角、卡片化、清晰层次
+  考勤 App · Apple 2026 + Prismic 级产品质感
+  回退值：经典 iOS 系统色；可从 Apple Design Resources iOS 26 UI Kit 替换为官方色
 */
 :root {
   /* === 网格 (8dp) === */
@@ -21,72 +21,89 @@
 
   --page-x: var(--space-20);
   --page-y: var(--space-20);
-  /* 健康风：略大圆角，更柔和 */
-  --radius-sm: 14px;
-  --radius-md: 18px;
-  --radius-lg: 22px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
   --radius-xl: 28px;
   --radius-full: 9999px;
-  --touch-target: 48px;
+  --touch-target: 44px;  /* iOS HIG 最小触控目标 44pt */
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  /* === 健康风配色：温暖背景 + 青绿主色 === */
-  --bg: #f6f5f2;
-  --bg-subtle: #efede8;
-  --surface: #fefefe;
-  --surface-2: #faf9f6;
-  --surface-hover: #f2f0eb;
+  /* === 背景与表面（回退：systemGroupedBackground 等） === */
+  --bg: #F2F2F7;
+  --bg-subtle: #EBEBF0;
+  --surface: #FFFFFF;
+  --surface-2: #F5F5F7;
+  --surface-hover: rgba(60, 60, 67, 0.06);
 
-  --on-bg: #1c1b18;
-  --on-surface: #1c1b18;
-  --on-surface-variant: #5c5a54;
-  --on-surface-muted: #8c8982;
-  --outline: #e8e6e1;
-  --outline-variant: #eeebe6;
+  /* === 文字层级（label / secondaryLabel / tertiaryLabel） === */
+  --on-bg: #1C1C1E;
+  --on-surface: #1C1C1E;
+  --on-surface-variant: #5C5C5E;
+  --on-surface-muted: #8E8E93;
+  --outline: rgba(60, 60, 67, 0.12);
+  --outline-variant: rgba(60, 60, 67, 0.06);
+  /* 轻线条：点名小按钮、列表分隔线等，与 outline 体系统一 */
+  --outline-subtle: rgba(60, 60, 67, 0.08);
+  --separator: 1px solid var(--outline-variant);
 
-  /* 主色：靛紫，按钮与强调 */
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --on-primary: #ffffff;
-  --primary-container: #e0e7ff;
-  --on-primary-container: #3730a3;
+  /* === 主色（回退：Primary / systemBlue） === */
+  --primary: #007AFF;
+  --primary-hover: #0051D4;
+  --on-primary: #FFFFFF;
+  --primary-container: rgba(0, 122, 255, 0.14);
+  --on-primary-container: #0046A3;
 
-  /* 语义色：保持清晰，略柔和 */
-  --success: #059669;
-  --success-container: #d1fae5;
-  --success-border: #6ee7b7;
-  --leave: #ea580c;
-  --leave-container: #ffedd5;
-  --leave-border: #fdba74;
-  --late: #0284c7;
-  --late-container: #e0f2fe;
-  --late-border: #7dd3fc;
-  --surface-border: #e0ddd8;
-  --error: #dc2626;
-  --error-container: #fee2e2;
+  /* === 语义色（回退：systemGreen / systemRed / systemOrange） === */
+  --success: #34C759;
+  --success-container: rgba(52, 199, 89, 0.12);
+  --success-border: rgba(52, 199, 89, 0.30);
+  --leave: #FF9F0A;
+  --leave-container: rgba(255, 159, 10, 0.12);
+  --leave-border: rgba(255, 159, 10, 0.30);
+  --late: #007AFF;
+  --late-container: rgba(0, 122, 255, 0.12);
+  --late-border: rgba(0, 122, 255, 0.28);
+  --surface-border: rgba(60, 60, 67, 0.12);
+  --error: #FF3B30;
+  --error-container: rgba(255, 59, 48, 0.12);
 
-  /* 玻璃拟态：暖白 */
-  --glass-bg: rgba(254, 254, 253, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-blur: 20px;
+  /* === 毛玻璃 === */
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: 24px;
+
+  /* === 文字层级（iOS 对齐，便于主题/无障碍） === */
+  --text-dialog-title-size: 17px;
+  --text-footnote-size: 11px;
+  --text-caption-size: 13px;
+  --text-label-size: 15px;
+}
+
+/* iOS 弹簧缓动 - 应用于 active 按压释放 */
+:root {
+  --spring-out: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-ios:   cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-snap:  cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
 @layer base {
   * {
     border-color: var(--outline);
+    /* 禁用系统高亮，统一由 active: 处理 */
+    -webkit-tap-highlight-color: transparent;
   }
   html {
     scroll-behavior: smooth;
-    -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
   body {
-    font-family: "Plus Jakarta Sans", "Roboto", system-ui, -apple-system, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     letter-spacing: 0.01em;
@@ -96,25 +113,56 @@
     padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* 禁止文本选中（移动端） */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input, textarea {
+    /* 输入框保留文本选中 */
+    -webkit-user-select: text;
+    user-select: text;
   }
   ::selection {
-    background: rgba(79, 70, 229, 0.2);
+    background: var(--primary-container);
     color: var(--on-surface);
   }
-  button, a, [role="button"], input, select, textarea {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  button, a, [role="button"] {
+    /* 基础过渡：transform 100ms 弹出，背景色 150ms 缓入 */
+    transition:
+      transform      100ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      opacity        100ms ease,
+      background-color 150ms ease,
+      color          150ms ease,
+      border-color   150ms ease,
+      box-shadow     150ms ease;
     transform: translateZ(0);
     backface-visibility: hidden;
+    /* 指针样式 */
+    cursor: default;
+    -webkit-touch-callout: none;
+  }
+  input, select, textarea {
+    transition:
+      background-color 150ms ease,
+      border-color    150ms ease,
+      box-shadow      150ms ease;
   }
 }
 
-/* 类型比例 · 规范字号 */
-.text-display { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.3; color: var(--on-surface); }
-.text-title   { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--on-surface); }
-.text-body    { font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--on-surface); }
-.text-label   { font-size: 14px; font-weight: 500; line-height: 1.45; color: var(--on-surface); }
-.text-caption { font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--on-surface-muted); }
-.text-tiny    { font-size: 11px; font-weight: 500; line-height: 1.45; }
+/*
+  类型比例 · iOS 层级（SF / HIG 对齐）
+  大标题 > 区块标题 > 弹窗标题 > 正文 > 标签 > 说明 > 图注
+  间距：8pt 网格为主（--space-8/16/24/32），标题–正文 8px，区块间 16px
+*/
+.text-large-title  { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.28; color: var(--on-surface); }
+.text-display      { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.28; color: var(--on-surface); }
+.text-title        { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--on-surface); }
+.text-dialog-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--on-surface); }
+.text-body         { font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--on-surface); }
+.text-label        { font-size: 15px; font-weight: 500; line-height: 1.45; color: var(--on-surface); }
+.text-caption      { font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--on-surface-muted); }
+.text-footnote     { font-size: 11px; font-weight: 500; line-height: 1.45; color: var(--on-surface-muted); }
+.text-tiny         { font-size: 11px; font-weight: 500; line-height: 1.45; }
 
 /* 玻璃顶栏/底栏 */
 .glass-bar {
@@ -124,12 +172,11 @@
   border-color: var(--glass-border);
 }
 
-/* 健康风卡片：柔和阴影 + 圆角 */
+/* 卡片：surface + 极细描边，与全局 outline 体系一致 */
 .card-soft {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  box-shadow: 0 2px 12px rgba(28, 27, 24, 0.04), 0 1px 3px rgba(28, 27, 24, 0.03);
-  border: 1px solid var(--outline-variant);
+  border: 0.5px solid rgba(60, 60, 67, 0.08);
 }
 
 /* 统计/状态小卡片（如应到/实到/请假/晚到） */
@@ -138,4 +185,80 @@
   padding: var(--space-8) var(--space-12);
   font-weight: 500;
   text-align: center;
+}
+
+/* 按钮：强制使用设计变量配色 + iOS 级字重（主色/危险用 semibold） */
+[data-slot="button"][data-variant="default"] {
+  background-color: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+[data-slot="button"][data-variant="destructive"] {
+  background-color: var(--error);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+[data-slot="button"][data-variant="outline"] {
+  border-color: var(--outline);
+  background-color: var(--surface);
+  color: var(--on-surface);
+}
+[data-slot="button"][data-variant="inverse"] {
+  background-color: var(--on-surface);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+/* Alert 弹窗内按钮：强制覆盖，确保「放弃当前内容」等弹窗配色一致 */
+[data-slot="alert-dialog-content"] [data-slot="button"][data-variant="default"] {
+  background-color: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+[data-slot="alert-dialog-content"] [data-slot="button"][data-variant="destructive"] {
+  background-color: var(--error);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+[data-slot="alert-dialog-content"] [data-slot="button"][data-variant="outline"] {
+  border-color: var(--outline);
+  background-color: var(--surface);
+  color: var(--on-surface);
+}
+[data-slot="alert-dialog-content"] [data-slot="button"][data-variant="inverse"] {
+  background-color: var(--on-surface);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+/* 分级阴影：与 --on-surface 同源灰，轻量不堆叠 */
+.shadow-elevation-1 {
+  box-shadow: 0 1px 0 rgba(28, 28, 30, 0.07);
+}
+.shadow-elevation-2 {
+  box-shadow: 0 1px 0 rgba(28, 28, 30, 0.09), 0 2px 12px rgba(28, 28, 30, 0.05);
+}
+
+/* 统一弹簧按压基类：适合所有可点击元素 */
+.press {
+  transition: transform 100ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 100ms ease;
+}
+.press:active {
+  transform: scale(0.94);
+  opacity: 0.78;
+}
+
+/* 大卡片弹性按压 */
+.press-card {
+  transition: transform 120ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.press-card:active {
+  transform: scale(0.985);
+}
+
+/* 深色模式预留：仅覆盖变量值，组件无需改 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* --bg, --surface, --on-surface 等后续在此填写 */
+  }
 }

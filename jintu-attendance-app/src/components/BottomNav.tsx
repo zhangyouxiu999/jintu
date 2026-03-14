@@ -20,11 +20,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="glass-bar fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-[var(--outline-variant)] shadow-elevation-bar"
-      style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        minHeight: 'calc(56px + env(safe-area-inset-bottom, 0px))',
-      }}
+      className="glass-bar fixed inset-x-0 bottom-0 z-30 flex min-h-[calc(56px+env(safe-area-inset-bottom,0px))] items-center justify-around border-t border-[var(--outline-variant)] pb-[env(safe-area-inset-bottom,0px)] shadow-elevation-bar"
       aria-label="主导航"
     >
       <Link

@@ -1,11 +1,14 @@
-import { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronDown, FileSpreadsheet, Plus, Pencil, Trash2, ArrowUpDown, MoreHorizontal, Calendar, History as HistoryIcon, ListChecks } from 'lucide-react'
+import { ChevronDown, FileDown, FileSpreadsheet, FileUp, Plus, Pencil, Trash2, ArrowUpDown, MoreHorizontal, Calendar, History as HistoryIcon, ListChecks } from 'lucide-react'
 import { useClass } from '@/hooks/useClass'
 import { useClassList } from '@/hooks/useClassList'
+import { useGradesImport } from '@/hooks/useGradesImport'
+import type { GradesForClass, GradesPeriod } from '@/types'
 import { storage } from '@/store/storage'
-import type { GradesForClass, GradesPeriod } from '@/store/storage'
+import { useAppLayout } from '@/components/AppLayout'
+import PageHeader, { pageHeaderShellClassName } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -32,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { showToast } from '@/lib/toast'
+import { cn } from '@/lib/utils'
 
 const defaultSubjects = ['语文', '数学', '英语']
 
@@ -60,8 +64,6 @@ export default function Grades() {
   const [newSubjectName, setNewSubjectName] = useState('')
   const [addPeriodOpen, setAddPeriodOpen] = useState(false)
   const [newPeriodName, setNewPeriodName] = useState('')
-  const [importExcelSubmitting, setImportExcelSubmitting] = useState(false)
-  const importExcelFileRef = useRef<HTMLInputElement>(null)
   const [sortBy, setSortBy] = useState<'order' | 'name' | 'total'>('order')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [subjectMenuSubject, setSubjectMenuSubject] = useState<string | null>(null)
@@ -132,6 +134,39 @@ export default function Grades() {
     },
     [classId, currentPeriodId]
   )
+
+  const { importExcelSubmitting, importExcelFileRef, handleImportExcel } = useGradesImport({
+    classId,
+    currentPeriodId,
+    students,
+    persist,
+  })
+
+  const { setPageActions } = useAppLayout()
+
+  useEffect(() => {
+    if (!classId || loading) return
+    setPageActions({
+      importAction: {
+        id: 'grades-import',
+        label: '导入成绩 Excel',
+        icon: FileUp,
+        disabled: importExcelSubmitting,
+        onSelect: () => importExcelFileRef.current?.click(),
+      },
+      exportAction: {
+        id: 'grades-export',
+        label: '导出成绩单',
+        icon: FileDown,
+        disabled: true,
+      },
+      extraActions: [
+        { id: 'grades-add-subject', label: '添加科目', icon: Plus, onSelect: () => setAddSubjectOpen(true) },
+        { id: 'grades-add-period', label: '添加成绩单', icon: Plus, onSelect: () => { setNewPeriodName(`第${periods.length + 1}期`); setAddPeriodOpen(true) } },
+      ],
+    })
+    return () => setPageActions({})
+  }, [classId, loading, importExcelSubmitting, periods.length, setPageActions])
 
   useEffect(() => {
     if (editingPeriodTitle) periodTitleInputRef.current?.focus()
@@ -222,110 +257,6 @@ export default function Grades() {
     setAddPeriodOpen(false)
   }
 
-  const normalizeName = (s: string) => s.replace(/\s+/g, ' ').trim()
-
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !classId || !currentPeriodId || importExcelSubmitting) {
-      e.target.value = ''
-      return
-    }
-    const name = file.name.toLowerCase()
-    if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
-      showToast('请选择 .xlsx 或 .xls 文件', { variant: 'error', duration: 2000 })
-      e.target.value = ''
-      return
-    }
-    setImportExcelSubmitting(true)
-    let data: ArrayBuffer
-    try {
-      data = await new Promise<ArrayBuffer>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as ArrayBuffer)
-        reader.onerror = reject
-        reader.readAsArrayBuffer(file)
-      })
-    } catch (readErr) {
-      console.warn('Excel 文件读取失败', readErr)
-      showToast('文件读取失败，请重试', { variant: 'error', duration: 2500 })
-      setImportExcelSubmitting(false)
-      e.target.value = ''
-      return
-    }
-    e.target.value = ''
-    try {
-      const XLSX = await import('xlsx')
-      const wb = XLSX.read(data, { type: 'array' })
-      const firstSheet = wb.Sheets[wb.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json<string[]>(firstSheet, { header: 1 }) as (string | number)[][]
-      let nameColIndex = -1
-      let headerRowIndex = -1
-      for (let r = 0; r < Math.min(rows.length, 10); r++) {
-        const row = rows[r]
-        if (!Array.isArray(row)) continue
-        const idx = row.findIndex((cell) => String(cell ?? '').trim() === '姓名')
-        if (idx >= 0) {
-          nameColIndex = idx
-          headerRowIndex = r
-          break
-        }
-      }
-      if (nameColIndex < 0 || headerRowIndex < 0) {
-        showToast('未找到「姓名」列，请确保表头含「姓名」', { variant: 'error', duration: 2500 })
-        return
-      }
-      const headerRow = rows[headerRowIndex] as (string | number)[]
-      const subjectCols: { colIndex: number; subject: string }[] = []
-      const skipHeaders = new Set(['姓名', '序号', '备注', '总分'])
-      for (let c = 0; c < headerRow.length; c++) {
-        if (c === nameColIndex) continue
-        const raw = headerRow[c]
-        const subject = String(raw ?? '').trim()
-        if (subject && !skipHeaders.has(subject)) subjectCols.push({ colIndex: c, subject })
-      }
-      if (subjectCols.length === 0) {
-        showToast('未找到可导入的科目列', { variant: 'error', duration: 2500 })
-        return
-      }
-      const nameToStudent = new Map(students.map((s) => [normalizeName(s.name), s]))
-      const newSubjects = subjectCols.map((c) => c.subject)
-      const newScores: Record<string, Record<string, string>> = {}
-      let matched = 0
-      for (let r = headerRowIndex + 1; r < rows.length; r++) {
-        const row = rows[r] as (string | number)[]
-        if (!Array.isArray(row) || row.length <= nameColIndex) continue
-        const nameCell = row[nameColIndex]
-        const studentName = normalizeName(typeof nameCell === 'string' ? nameCell : String(nameCell ?? ''))
-        if (!studentName) continue
-        const student = nameToStudent.get(studentName)
-        if (!student) continue
-        matched += 1
-        if (!newScores[student.id]) newScores[student.id] = {}
-        for (const { colIndex, subject } of subjectCols) {
-          const val = row[colIndex]
-          const str = val === null || val === undefined ? '' : String(val).trim()
-          if (str) newScores[student.id][subject] = str
-        }
-      }
-      const next: GradesForClass = { subjects: newSubjects, scores: newScores }
-      const importedName =
-        headerRowIndex > 0 && rows[0] && Array.isArray(rows[0])
-          ? String(rows[0][0] ?? '').trim()
-          : ''
-      persist(next, importedName || undefined)
-      if (matched > 0) {
-        showToast(`已导入 ${matched} 条成绩`, { variant: 'success', duration: 2000 })
-      } else {
-        showToast('未匹配到学生，请检查 Excel 中「姓名」与班级学生名单是否一致', { variant: 'error', duration: 3000 })
-      }
-    } catch (err) {
-      console.warn('Excel 导入失败', err)
-      showToast('Excel 解析失败，请检查文件格式', { variant: 'error', duration: 2500 })
-    } finally {
-      setImportExcelSubmitting(false)
-    }
-  }
-
   const renameSubjectAction = (oldName: string, newName: string) => {
     const trimmed = newName.trim()
     if (!trimmed || trimmed === oldName) return
@@ -406,13 +337,7 @@ export default function Grades() {
   if (loading || !classEntity) {
     return (
       <div className="min-h-screen bg-[var(--bg)]">
-        <header
-          className="glass-bar sticky top-0 z-50 flex h-14 items-center gap-2 border-b border-[var(--outline-variant)] px-[var(--page-x)] py-2 shadow-elevation-1"
-          style={{ paddingTop: 'var(--safe-top)', minHeight: 'calc(56px + var(--safe-top))' }}
-        >
-          <div className="w-10 shrink-0" aria-hidden />
-          <h1 className="min-w-0 flex-1 truncate text-title font-semibold text-[var(--on-surface)]">成绩单</h1>
-        </header>
+        <PageHeader title="成绩单" />
         <main className="flex min-h-[200px] items-center justify-center px-[var(--page-x)] py-4">
           <p className="text-label text-[var(--on-surface-muted)]">{loading ? '' : '班级不存在'}</p>
         </main>
@@ -423,25 +348,22 @@ export default function Grades() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <AlertDialog open={!!deleteSubjectConfirm} onOpenChange={(open) => !open && setDeleteSubjectConfirm(null)}>
-        <AlertDialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <AlertDialogContent>
           <AlertDialogHeader className="text-center sm:text-center">
-            <AlertDialogTitle className="text-title text-[var(--on-surface)] block text-center">确定删除该科目？</AlertDialogTitle>
+            <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">确定删除该科目？</AlertDialogTitle>
             <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)]">
               {deleteSubjectConfirm ? `删除科目「${deleteSubjectConfirm}」后，该列成绩将一并清除，且无法恢复。` : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel className="!h-8 min-h-0 rounded-[var(--radius-sm)] !border-[var(--outline)] !bg-[var(--surface)] px-3 py-0 text-caption !text-[var(--on-surface)]">取消</AlertDialogCancel>
-            <AlertDialogAction className="!h-8 min-h-0 rounded-[var(--radius-sm)] border-0 !bg-[var(--primary)] px-3 py-0 !text-white text-caption" onClick={handleConfirmRemoveSubject}>确定删除</AlertDialogAction>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmRemoveSubject}>确定删除</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* 顶栏 · 标题与切换期合并为芯片样式（与点名页一致） */}
-      <header
-        className="glass-bar sticky top-0 z-50 flex flex-col border-b border-[var(--outline-variant)] shadow-elevation-1"
-        style={{ paddingTop: 'var(--safe-top)', minHeight: 'calc(56px + var(--safe-top))' }}
-      >
+      <header className={`${pageHeaderShellClassName} flex flex-col`}>
         <div className="flex min-h-14 items-center justify-between gap-2 border-b border-[var(--outline-variant)] px-[var(--page-x)] py-2">
           <div className="w-10 shrink-0" aria-hidden />
           <div className="flex min-w-0 flex-1 justify-start overflow-hidden">
@@ -577,8 +499,8 @@ export default function Grades() {
         />
         <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--outline)] bg-[var(--surface)] shadow-elevation-card [-webkit-overflow-scrolling:touch]">
           <table
-            className="w-full border-collapse text-caption"
-            style={{ minWidth: 40 + 80 + grades.subjects.length * 72 + 72 }}
+            className="w-full min-w-[var(--grades-table-min-width)] border-collapse text-caption"
+            style={{ '--grades-table-min-width': `${40 + 80 + grades.subjects.length * 72 + 72}px` } as CSSProperties}
           >
             <thead>
               <tr>
@@ -621,7 +543,10 @@ export default function Grades() {
                 {grades.subjects.map((sub) => (
                   <th
                     key={sub}
-                    className="w-[72px] min-w-[72px] border-b border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-label font-medium text-[var(--on-surface)] select-none touch-manipulation"
+                  className={cn(
+                    'w-[72px] min-w-[72px] select-none touch-manipulation border-b border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-label font-medium text-[var(--on-surface)]',
+                    subjectMenuSubject === sub && 'bg-[var(--surface-hover)]'
+                  )}
                     onTouchStart={(e) => handleSubjectPointerDown(sub, e)}
                     onTouchEnd={handleSubjectPointerUp}
                     onTouchCancel={handleSubjectPointerUp}
@@ -652,7 +577,7 @@ export default function Grades() {
                     return (
                       <td key={sub} className="border-b border-[var(--outline-variant)] p-1 text-center align-middle">
                         {isEditingCell ? (
-                          <input
+                          <Input
                             ref={inputRef}
                             type="text"
                             inputMode="decimal"
@@ -693,9 +618,9 @@ export default function Grades() {
       </main>
 
       <Dialog open={addSubjectOpen} onOpenChange={setAddSubjectOpen}>
-        <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <DialogContent>
           <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="text-title text-[var(--on-surface)] block text-center">添加科目</DialogTitle>
+            <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">添加科目</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">输入科目名称，如：物理、化学</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 py-2">
@@ -714,9 +639,9 @@ export default function Grades() {
       </Dialog>
 
       <Dialog open={addPeriodOpen} onOpenChange={setAddPeriodOpen}>
-        <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <DialogContent>
           <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="text-title text-[var(--on-surface)] block text-center">添加成绩单</DialogTitle>
+            <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">添加成绩单</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">为新成绩单起名，如：期中、期末、第一次月考</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 py-2">
@@ -791,9 +716,9 @@ export default function Grades() {
           setRenameValue('')
         }}
       >
-        <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <DialogContent>
           <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="text-title text-[var(--on-surface)] block text-center">修改科目名</DialogTitle>
+            <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">修改科目名</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">输入新名称，不可与已有科目重复</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 py-2">

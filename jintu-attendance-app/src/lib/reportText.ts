@@ -1,7 +1,7 @@
-import type { Student } from '@/types'
+import type { AttendanceStatusMap, PeriodId, Student } from '@/types'
 import { PERIOD_NAMES } from '@/lib/period'
 
-export function getReportDateLabel(period: number): string {
+export function getReportDateLabel(period: PeriodId): string {
   const now = new Date()
   const month = now.getMonth() + 1
   const day = now.getDate()
@@ -9,7 +9,7 @@ export function getReportDateLabel(period: number): string {
 }
 
 /** 从日期字符串得到报告用日期时段标签，如 "3月1日 上午" */
-export function getReportDateLabelFromDate(dateStr: string, period: number): string {
+export function getReportDateLabelFromDate(dateStr: string, period: PeriodId): string {
   const parts = dateStr.split('-').map(Number)
   const month = parts[1] ?? new Date().getMonth() + 1
   const day = parts[2] ?? new Date().getDate()
@@ -19,7 +19,7 @@ export function getReportDateLabelFromDate(dateStr: string, period: number): str
 /**
  * 轻量版考勤报告文案：班级名、日期时段、应到/实到/请假/晚到/未到
  */
-export function buildReportText(className: string, students: Student[], period: number): string {
+export function buildReportText(className: string, students: Student[], period: PeriodId): string {
   const dateLabel = getReportDateLabel(period)
   const total = students.length
   const present = students.filter((s) => s.attendanceStatus === 1)
@@ -45,8 +45,8 @@ export function buildReportText(className: string, students: Student[], period: 
 export function buildReportTextFromSnapshot(
   className: string,
   dateStr: string,
-  period: number,
-  statusMap: Record<string, number>,
+  period: PeriodId,
+  statusMap: AttendanceStatusMap,
   studentNames: Record<string, string>
 ): string {
   const dateLabel = getReportDateLabelFromDate(dateStr, period)

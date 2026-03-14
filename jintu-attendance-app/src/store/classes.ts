@@ -16,10 +16,9 @@ export async function getAll(): Promise<ClassEntity[]> {
 }
 
 /** 从本地持久化恢复（启动时调用） */
-export function hydrateFromPersisted(data: unknown): void {
-  if (!Array.isArray(data)) return
+export function hydrateFromPersisted(data: ClassEntity[]): void {
   map.clear()
-  for (const item of data as ClassEntity[]) {
+  for (const item of data) {
     if (item?.id != null) map.set(item.id, item)
   }
 }

@@ -1,7 +1,12 @@
 import * as React from 'react'
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
+import { type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
+
+/** Alert 内容区：padding 24px，区块 gap 16px；与 Dialog 一致 */
+const alertDialogContentBase =
+  'fixed z-50 flex flex-col gap-4 left-1/2 right-auto top-1/2 bottom-auto w-[min(calc(100vw-2rem),28rem)] max-w-md max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-[0_8px_40px_rgba(0,0,0,0.12)] opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100'
 
 function AlertDialog(props: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
@@ -19,7 +24,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/45',
+        'fixed inset-0 z-50 bg-black/45 opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100',
         className
       )}
       {...props}
@@ -37,8 +42,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          'bg-[var(--surface)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed z-50 grid w-full gap-4 p-5 duration-200',
-          'top-[var(--safe-top)] bottom-[var(--safe-bottom)] left-[var(--safe-left)] right-[var(--safe-right)] m-auto max-h-[85vh] translate-x-0 translate-y-0 rounded-[var(--radius-md)]',
+          alertDialogContentBase,
           className
         )}
         {...props}
@@ -74,7 +78,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn('text-title', className)}
+      className={cn('text-dialog-title', className)}
       {...props}
     />
   )
@@ -95,10 +99,17 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  variant = 'default',
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
+  VariantProps<typeof buttonVariants>) {
   return (
-    <AlertDialogPrimitive.Action className={cn(buttonVariants(), className)} {...props} />
+    <AlertDialogPrimitive.Action
+      data-slot="button"
+      data-variant={variant}
+      className={cn(buttonVariants({ variant, size: 'sm' }), className)}
+      {...props}
+    />
   )
 }
 
@@ -108,7 +119,9 @@ function AlertDialogCancel({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   return (
     <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: 'outline' }), className)}
+      data-slot="button"
+      data-variant="outline"
+      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), className)}
       {...props}
     />
   )

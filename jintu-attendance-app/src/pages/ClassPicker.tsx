@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { School } from 'lucide-react'
 import { useClassList } from '@/hooks/useClassList'
+import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { animateStagger } from '@/lib/gsap'
 
@@ -24,12 +25,7 @@ export default function ClassPicker({ title, basePath }: ClassPickerProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--bg)]">
-        <header
-          className="glass-bar sticky top-0 z-50 flex h-14 items-center gap-2 border-b border-[var(--outline-variant)] px-[var(--page-x)] shadow-elevation-1"
-          style={{ paddingTop: 'var(--safe-top)', minHeight: 'calc(56px + var(--safe-top))' }}
-        >
-          <h1 className="min-w-0 flex-1 truncate text-title font-semibold text-[var(--on-surface)]">{title}</h1>
-        </header>
+        <PageHeader title={title} />
         <main className="flex min-h-[200px] items-center justify-center px-[var(--page-x)] py-12" aria-busy="true" />
       </div>
     )
@@ -37,12 +33,7 @@ export default function ClassPicker({ title, basePath }: ClassPickerProps) {
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
-      <header
-        className="glass-bar sticky top-0 z-50 flex h-14 items-center gap-2 border-b border-[var(--outline-variant)] px-[var(--page-x)] shadow-elevation-1"
-        style={{ paddingTop: 'var(--safe-top)', minHeight: 'calc(56px + var(--safe-top))' }}
-      >
-        <h1 className="min-w-0 flex-1 truncate text-title font-semibold text-[var(--on-surface)]">{title}</h1>
-      </header>
+      <PageHeader title={title} />
 
       <main className="px-[var(--page-x)] py-4">
         {list.length === 0 ? (

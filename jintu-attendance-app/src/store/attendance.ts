@@ -1,12 +1,13 @@
-import type { AttendanceSnapshot } from '@/types'
+import type { AttendanceSnapshot, AttendanceStatus, AttendanceStatusMap, PeriodId } from '@/types'
 import { getCurrentPeriodId } from '@/lib/period'
 import { today } from '@/lib/date'
+import * as classesStore from './classes'
 import { uuid } from './db'
 import { storage } from './storage'
 
 const map = new Map<string, AttendanceSnapshot>()
 
-function key(classId: string, date: string, period: number): string {
+function key(classId: string, date: string, period: PeriodId): string {
   return `${classId}|${date}|${period}`
 }
 
@@ -16,10 +17,9 @@ function persist(): void {
 }
 
 /** 从本地持久化恢复（启动时调用） */
-export function hydrateFromPersisted(data: unknown): void {
-  if (!Array.isArray(data)) return
+export function hydrateFromPersisted(data: AttendanceSnapshot[]): void {
   map.clear()
-  for (const item of data as AttendanceSnapshot[]) {
+  for (const item of data) {
     if (item?.classId != null && item?.date != null && item?.period != null) {
       map.set(key(item.classId, item.date, item.period), item)
     }
@@ -28,10 +28,15 @@ export function hydrateFromPersisted(data: unknown): void {
 
 export { getCurrentPeriodId }
 
+async function getStudentIdsForClass(classId: string): Promise<string[]> {
+  const cls = await classesStore.getById(classId)
+  return cls?.studentOrder ?? []
+}
+
 export async function get(
   classId: string,
   date: string,
-  period: number
+  period: PeriodId
 ): Promise<AttendanceSnapshot | null> {
   return map.get(key(classId, date, period)) ?? null
 }
@@ -45,13 +50,13 @@ export async function upsert(snapshot: AttendanceSnapshot): Promise<void> {
 export async function getOrCreate(
   classId: string,
   date: string,
-  period: number,
+  period: PeriodId,
   studentIds: string[]
 ): Promise<AttendanceSnapshot> {
   const k = key(classId, date, period)
   let snap = map.get(k)
   if (snap) return snap
-  const statusMap: Record<string, number> = {}
+  const statusMap: AttendanceStatusMap = {}
   for (const id of studentIds) statusMap[id] = 0
   snap = {
     id: uuid(),
@@ -64,6 +69,41 @@ export async function getOrCreate(
   map.set(k, snap)
   persist()
   return snap
+}
+
+export async function getCurrentSnapshot(classId: string): Promise<AttendanceSnapshot> {
+  const date = today()
+  const period = getCurrentPeriodId()
+  const studentIds = await getStudentIdsForClass(classId)
+  return getOrCreate(classId, date, period, studentIds)
+}
+
+export async function saveStudentStatus(
+  classId: string,
+  studentId: string,
+  status: AttendanceStatus
+): Promise<void> {
+  const snapshot = await getCurrentSnapshot(classId)
+  await upsert({
+    ...snapshot,
+    statusMap: {
+      ...snapshot.statusMap,
+      [studentId]: status,
+    },
+  })
+}
+
+export async function saveCurrentStatusMap(
+  classId: string,
+  statusMap: AttendanceStatusMap
+): Promise<void> {
+  const snapshot = await getCurrentSnapshot(classId)
+  await upsert({ ...snapshot, statusMap })
+}
+
+export async function confirmCurrentReport(classId: string): Promise<void> {
+  const snapshot = await getCurrentSnapshot(classId)
+  await upsert({ ...snapshot, confirmedAt: new Date().toISOString() })
 }
 
 export async function listByClassAndDate(

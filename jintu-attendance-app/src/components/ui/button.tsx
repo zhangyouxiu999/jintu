@@ -8,15 +8,20 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-[var(--primary)] text-[var(--on-primary)] hover:opacity-90 shadow-elevation-1',
-        destructive: 'bg-[var(--error)] text-white hover:opacity-90 focus-visible:ring-[var(--error)]/30',
-        outline: 'border border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] hover:bg-[var(--surface-2)]',
-        secondary: 'bg-[var(--primary-container)] text-[var(--on-primary-container)] hover:opacity-80',
+        /* iOS 主按钮：系统蓝、白字、semibold、极轻阴影 */
+        default: 'bg-[var(--primary)] text-[var(--on-primary)] font-semibold hover:opacity-90 active:opacity-95 shadow-[0_1px_0_rgba(28,28,30,0.06)]',
+        /* 危险操作：系统红、白字、semibold */
+        destructive: 'bg-[var(--error)] text-[var(--on-primary)] font-semibold hover:opacity-90 active:opacity-95 focus-visible:ring-[var(--error)]/30',
+        /* 取消/次要：细描边、表面色，iOS 级柔和 */
+        outline: 'border border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] hover:bg-[var(--surface-2)] active:bg-[var(--surface-2)]',
+        secondary: 'bg-[var(--primary-container)] text-[var(--on-primary-container)] hover:opacity-80 font-medium',
+        inverse: 'bg-[var(--on-surface)] text-[var(--surface)] font-semibold hover:opacity-90 active:opacity-95',
         ghost: 'text-[var(--on-surface)] hover:bg-[var(--surface-2)]',
         link: 'text-[var(--primary)] underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-[var(--touch-target)] px-4 py-2 has-[>svg]:px-3',
+        xs: 'h-8 gap-1.5 px-3 has-[>svg]:px-2.5 text-caption min-h-0',
         sm: 'h-9 gap-1.5 px-3 has-[>svg]:px-2.5 text-label',
         lg: 'h-12 px-6 has-[>svg]:px-4 text-body',
         icon: 'size-10 min-w-10 min-h-10',

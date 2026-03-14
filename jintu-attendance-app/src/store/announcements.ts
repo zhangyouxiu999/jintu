@@ -1,4 +1,4 @@
-import type { AnnouncementEntity } from '@/types'
+import type { AnnouncementEntity, AnnouncementExpirationType } from '@/types'
 import { uuid } from './db'
 import { storage } from './storage'
 
@@ -25,11 +25,10 @@ export async function getByClassId(classId: string): Promise<AnnouncementEntity[
 }
 
 /** 从本地持久化恢复（启动时调用） */
-export function hydrateFromPersisted(data: unknown): void {
-  if (!Array.isArray(data)) return
+export function hydrateFromPersisted(data: AnnouncementEntity[]): void {
   map.clear()
   byClass.clear()
-  for (const item of data as AnnouncementEntity[]) {
+  for (const item of data) {
     if (item?.id == null || item?.classId == null) continue
     map.set(item.id, item)
     const list = byClass.get(item.classId) ?? []
@@ -60,13 +59,44 @@ export async function update(entity: AnnouncementEntity): Promise<void> {
 export async function create(
   classId: string,
   content: string,
-  expirationType: 'today' | 'permanent' | 'custom',
+  expirationType: AnnouncementExpirationType,
   startsAt?: string,
   expiresAt?: string
 ): Promise<string> {
   const id = uuid()
   await insert({ id, classId, content: content.trim(), expirationType, startsAt, expiresAt })
   return id
+}
+
+/** 批量发布公告，共用同一有效期类型，只持久化一次 */
+export async function createMany(
+  classId: string,
+  contents: string[],
+  expirationType: AnnouncementExpirationType,
+  startsAt?: string,
+  expiresAt?: string
+): Promise<void> {
+  const now = new Date().toISOString()
+  const list = byClass.get(classId) ?? []
+  for (const content of contents) {
+    const trimmed = content.trim()
+    if (!trimmed) continue
+    const id = uuid()
+    const full: AnnouncementEntity = {
+      id,
+      classId,
+      content: trimmed,
+      expirationType,
+      startsAt,
+      expiresAt,
+      createdAt: now,
+      updatedAt: now,
+    }
+    map.set(id, full)
+    list.push(id)
+  }
+  byClass.set(classId, list)
+  persist()
 }
 
 export async function remove(id: string): Promise<void> {

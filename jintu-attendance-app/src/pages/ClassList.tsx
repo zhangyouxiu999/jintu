@@ -31,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { pageHeaderShellClassName } from '@/components/PageHeader'
 import { animateStagger } from '@/lib/gsap'
 import { getAppName } from '@/lib/appConfig'
 
@@ -148,24 +149,21 @@ export default function ClassList() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <AlertDialog open={!!deleteConfirmClass} onOpenChange={(open) => !open && setDeleteConfirmClass(null)}>
-        <AlertDialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <AlertDialogContent>
           <AlertDialogHeader className="text-center sm:text-center">
-            <AlertDialogTitle className="text-title text-[var(--on-surface)] block text-center">确定删除该班级？</AlertDialogTitle>
+            <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">确定删除该班级？</AlertDialogTitle>
             <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)]">
               {deleteConfirmClass ? `删除「${deleteConfirmClass.name}」后，其学生与考勤记录将一并清除，且无法恢复。` : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel className="!h-8 min-h-0 rounded-[var(--radius-sm)] !border-[var(--outline)] !bg-[var(--surface)] px-3 py-0 text-caption !text-[var(--on-surface)]">取消</AlertDialogCancel>
-            <AlertDialogAction className="!h-8 min-h-0 rounded-[var(--radius-sm)] border-0 !bg-[var(--primary)] px-3 py-0 !text-white text-caption" onClick={handleConfirmDelete}>确定删除</AlertDialogAction>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmDelete}>确定删除</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      <header
-        className="glass-bar sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[var(--outline-variant)] px-[var(--page-x)] shadow-elevation-1"
-        style={{ paddingTop: 'var(--safe-top)', minHeight: 'calc(56px + var(--safe-top))' }}
-      >
+      <header className={`${pageHeaderShellClassName} flex items-center justify-between px-4 py-2`}>
         {isStandaloneClassList ? (
           <Button
             variant="ghost"
@@ -194,15 +192,15 @@ export default function ClassList() {
             />
           ) : (
             <h1
-              className="text-title flex cursor-pointer flex-col items-center gap-1.5 font-semibold tracking-tight text-[var(--on-surface)] underline-offset-2 transition-opacity hover:opacity-85 hover:underline"
+              className="flex cursor-pointer flex-col items-center gap-1.5 font-bold tracking-tight text-[var(--on-surface)] transition-opacity duration-150 hover:opacity-80"
               onClick={() => setEditingTitle(true)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setEditingTitle(true) }}
               aria-label={`标题：${appTitle}，点击修改`}
             >
-              <span className="rounded-full bg-[var(--primary-container)]/80 px-4 py-1.5 text-[var(--on-primary-container)]">{appTitle}</span>
-              <span className="h-0.5 w-10 rounded-full bg-[var(--primary)]/50" aria-hidden />
+              <span className="rounded-full bg-[var(--primary-container)] px-4 py-1.5 text-[15px] text-[var(--primary)]">{appTitle}</span>
+              <span className="h-0.5 w-8 rounded-full bg-[var(--primary)]/40" aria-hidden />
             </h1>
           )}
         </div>
@@ -218,42 +216,42 @@ export default function ClassList() {
         </Button>
       </header>
 
-      <main className="px-[var(--page-x)] py-[var(--space-24)]">
+      <main className="px-4 py-4">
         {loading ? (
           <div className="flex min-h-[200px] items-center justify-center py-12" aria-busy="true" />
         ) : list.length === 0 ? (
-          <div className="card-soft py-[var(--space-48)] text-center">
-            <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-[var(--radius-xl)] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary)]/20">
-              <School className="h-12 w-12 text-[var(--primary)]" />
+          <div className="rounded-[22px] bg-[var(--surface)] border border-[var(--outline-variant)] py-16 text-center px-6">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/60">
+              <School className="h-10 w-10 text-[var(--primary)]" strokeWidth={1.5} />
             </div>
-            <p className="text-display text-[var(--on-surface)]">暂无班级</p>
-            <p className="mt-2 text-label text-[var(--on-surface-variant)]">
+            <p className="text-[22px] font-bold tracking-tight text-[var(--on-surface)]">暂无班级</p>
+            <p className="mt-2 text-[14px] text-[var(--on-surface-muted)]">
               点击下方按钮新增班级
             </p>
             <Button
-              className="mt-6 h-10 rounded-[var(--radius-md)] bg-[var(--primary)] px-5 text-label font-semibold text-[var(--on-primary)] shadow-elevation-2 active:scale-[0.98]"
+              className="mt-7 h-11 rounded-[14px] bg-[var(--primary)] px-6 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.25)] transition-all duration-75 active:scale-[0.97] active:opacity-90"
               onClick={() => setDialogOpen(true)}
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" strokeWidth={2} />
               新增班级
             </Button>
           </div>
         ) : (
-          <div ref={listContainerRef} className="space-y-3">
+          <div ref={listContainerRef} className="space-y-2.5">
             {list.map((cls) => (
               <div
                 key={cls.id}
-                className="card-soft flex min-h-12 w-full items-center gap-3 px-4 py-3 transition-shadow hover:shadow-elevation-2"
+                className="rounded-[18px] bg-[var(--surface)] border border-[var(--outline-variant)] flex min-h-[60px] w-full items-center gap-3 px-4 py-3"
               >
                 <button
                   type="button"
                   onClick={() => navigate(`/attendance/${cls.id}`)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99] active:opacity-95"
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left transition-all duration-75 active:opacity-70 active:scale-[0.99]"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary)]/15 text-label font-semibold text-[var(--primary)]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/70 text-[17px] font-semibold text-[var(--primary)]">
                     {cls.name.charAt(0)}
                   </div>
-                  <span className="min-w-0 flex-1 truncate text-label font-medium text-[var(--on-surface)]">
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--on-surface)]">
                     {cls.name}
                   </span>
                 </button>
@@ -263,10 +261,10 @@ export default function ClassList() {
                       variant="ghost"
                       size="icon"
                       type="button"
-                      className="h-9 w-9 shrink-0 rounded-full text-[var(--on-surface-muted)]"
+                      className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-muted)] transition-all duration-75 active:scale-[0.88] active:opacity-70"
                       aria-label="更多"
                     >
-                      <MoreHorizontal className="h-4 w-4" />
+                      <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[10rem]">
@@ -316,10 +314,10 @@ export default function ClassList() {
             ))}
 
             <Button
-              className="mt-5 h-10 w-full rounded-[var(--radius-md)] bg-[var(--primary)] text-label font-semibold text-[var(--on-primary)] shadow-elevation-2 active:scale-[0.98]"
+              className="mt-4 h-11 w-full rounded-[14px] bg-[var(--primary)] text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.22)] transition-all duration-75 active:scale-[0.97] active:opacity-90"
               onClick={() => setDialogOpen(true)}
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" strokeWidth={2} />
               新增班级
             </Button>
           </div>
@@ -327,9 +325,9 @@ export default function ClassList() {
       </main>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <DialogContent>
           <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="text-title text-[var(--on-surface)] block text-center">新增班级</DialogTitle>
+            <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">新增班级</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">填写班级名称</DialogDescription>
           </DialogHeader>
           <div className="py-2">
@@ -343,16 +341,16 @@ export default function ClassList() {
             />
           </div>
           <div className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} className="rounded-[var(--radius-sm)] h-8 px-3 border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] text-caption">取消</Button>
-            <Button size="sm" onClick={handleAdd} disabled={!name.trim() || submitting} className="rounded-[var(--radius-sm)] h-8 px-3 bg-[var(--primary)] !text-white text-caption">{submitting ? '…' : '确定'}</Button>
+            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)}>取消</Button>
+            <Button size="sm" onClick={handleAdd} disabled={!name.trim() || submitting}>{submitting ? '…' : '确定'}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!exportConfirmClass} onOpenChange={(open) => { if (!open) setExportConfirmClass(null) }}>
-        <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <DialogContent>
           <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="text-title text-[var(--on-surface)]">确认导出</DialogTitle>
+            <DialogTitle className="text-dialog-title text-[var(--on-surface)]">确认导出</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
               {exportConfirmClass && (
                 <>将「{exportConfirmClass.name}」班级全部表单（点名表、考勤记录、课程表、成绩单）导出为 Excel 文件。</>
@@ -360,15 +358,14 @@ export default function ClassList() {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setExportConfirmClass(null)} className="rounded-[var(--radius-sm)] h-8 px-3 border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] text-caption">取消</Button>
+            <Button variant="outline" size="sm" onClick={() => setExportConfirmClass(null)}>取消</Button>
             <Button
-              size="sm"
+              size="default"
               onClick={async () => {
                 if (!exportConfirmClass) return
                 setExportConfirmClass(null)
                 await handleExportClass(exportConfirmClass)
               }}
-              className="rounded-[var(--radius-sm)] h-8 px-3 bg-[var(--primary)] !text-white text-caption"
             >
               确认导出
             </Button>
@@ -377,9 +374,9 @@ export default function ClassList() {
       </Dialog>
 
       <Dialog open={!!editingClass} onOpenChange={(open) => { if (!open) { setEditingClass(null); setName('') } }}>
-        <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <DialogContent>
           <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="text-title text-[var(--on-surface)] block text-center">编辑班级</DialogTitle>
+            <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">编辑班级</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">修改班级名称</DialogDescription>
           </DialogHeader>
           <div className="py-2">
@@ -393,8 +390,8 @@ export default function ClassList() {
             />
           </div>
           <div className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setEditingClass(null); setName('') }} className="rounded-[var(--radius-sm)] h-8 px-3 border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] text-caption">取消</Button>
-            <Button size="sm" onClick={handleSaveEdit} disabled={!name.trim() || submitting} className="rounded-[var(--radius-sm)] h-8 px-3 bg-[var(--primary)] !text-white text-caption">{submitting ? '…' : '保存'}</Button>
+            <Button variant="outline" size="sm" onClick={() => { setEditingClass(null); setName('') }}>取消</Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={!name.trim() || submitting}>{submitting ? '…' : '保存'}</Button>
           </div>
         </DialogContent>
       </Dialog>

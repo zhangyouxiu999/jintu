@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileSpreadsheet, School, LayoutTemplate, Plus, Download } from 'lucide-react'
+import { School, LayoutTemplate, Plus, History as HistoryIcon } from 'lucide-react'
 import { storage } from '@/store/storage'
 import { useClassList } from '@/hooks/useClassList'
-import { EXCEL_TEMPLATES, downloadTemplate, type TemplateMeta } from '@/lib/excelTemplates'
+import { downloadTemplate, type TemplateMeta } from '@/lib/excelTemplates'
 import PageHeader from '@/components/PageHeader'
+import TemplateList from '@/components/TemplateList'
 import { Button } from '@/components/ui/button'
 import { Accordion, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { SwipeableClassRow } from '@/components/SwipeableClassRow'
@@ -27,12 +28,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { animateStagger } from '@/lib/gsap'
 import { showToast } from '@/lib/toast'
+import { cn } from '@/lib/utils'
 
 export default function Settings() {
   const navigate = useNavigate()
   const mainRef = useRef<HTMLElement>(null)
   const { list: classList, loading: classListLoading, addClass, deleteClass } = useClassList()
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [, setRefreshKey] = useState(0)
   const currentId = storage.loadCurrentClassId()
   const [accordionValue, setAccordionValue] = useState<string | undefined>('classes')
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
@@ -95,8 +97,8 @@ export default function Settings() {
     <div className="min-h-screen bg-[var(--bg)]">
       <PageHeader title="设置" />
 
-      <main ref={mainRef} className="space-y-4 px-[var(--page-x)] py-4">
-        <section className="card-soft overflow-hidden p-0">
+      <main ref={mainRef} className="space-y-3 px-4 py-4">
+        <section className="rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
           <Accordion
             type="single"
             collapsible
@@ -105,34 +107,33 @@ export default function Settings() {
             className="w-full"
           >
             <AccordionItem value="classes" className="border-0">
-              <AccordionTrigger className="flex items-center gap-2 px-5 py-4 hover:no-underline">
-                <School className="h-4 w-4 shrink-0 text-[var(--primary)]" />
-                <span className="text-label text-[var(--on-surface)]">我的班级</span>
+              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5 hover:no-underline">
+                <School className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
+                <span className="text-[15px] font-semibold text-[var(--on-surface)]">我的班级</span>
                 {!classListLoading && classList.length > 0 && (
-                  <span className="text-caption text-[var(--on-surface-muted)]">
+                  <span className="text-[13px] text-[var(--on-surface-muted)]">
                     （{classList.find((c) => c.id === currentId)?.name ?? classList[0]?.name ?? '未选'}）
                   </span>
                 )}
               </AccordionTrigger>
               {/* 自定义可动画内容区：始终在 DOM 中，用 transition 做展开/收起 */}
               <div
-                className="overflow-hidden transition-[max-height,opacity] duration-300 ease-out"
-                style={{
-                  maxHeight: accordionValue === 'classes' ? '70vh' : '0',
-                  opacity: accordionValue === 'classes' ? 1 : 0,
-                }}
+                className={cn(
+                  'overflow-hidden transition-[max-height,opacity] duration-300 ease-out',
+                  accordionValue === 'classes' ? 'max-h-[70vh] opacity-100' : 'max-h-0 opacity-0'
+                )}
               >
                 <div className="px-5 pb-4 pt-0">
-                  <p className="text-caption text-[var(--on-surface-muted)]">选择默认班级；列表第一个为默认班级，将显示在首页点名。</p>
+                  <p className="text-[12.5px] text-[var(--on-surface-muted)] leading-relaxed">选择默认班级；列表第一个为默认班级，将显示在首页点名。</p>
                   {classListLoading ? (
                     <p className="mt-3 text-caption text-[var(--on-surface-muted)]">加载中…</p>
                   ) : classList.length === 0 ? (
                     <Button
                       variant="outline"
-                      className="mt-3 h-9 w-full rounded-[var(--radius-sm)] border-[var(--outline)] text-caption font-medium text-[var(--on-surface)]"
+                      className="mt-3 h-10 w-full rounded-[12px] border-[var(--outline)] text-[14px] font-medium text-[var(--on-surface-variant)] transition-all duration-75 active:scale-[0.98] active:opacity-80"
                       onClick={() => setAddDialogOpen(true)}
                     >
-                      <Plus className="mr-2 h-4 w-4" />
+                      <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
                       添加班级
                     </Button>
                   ) : (
@@ -159,10 +160,10 @@ export default function Settings() {
                       ))}
                       <Button
                         variant="outline"
-                        className="mt-2 h-9 w-full rounded-[var(--radius-sm)] border-[var(--outline)] text-caption font-medium text-[var(--on-surface)]"
+                        className="mt-2 h-10 w-full rounded-[12px] border-[var(--outline)] text-[14px] font-medium text-[var(--on-surface-variant)] transition-all duration-75 active:scale-[0.98] active:opacity-80"
                         onClick={() => setAddDialogOpen(true)}
                       >
-                        <Plus className="mr-2 h-4 w-4" />
+                        <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
                         添加班级
                       </Button>
                     </div>
@@ -172,57 +173,43 @@ export default function Settings() {
             </AccordionItem>
 
             <AccordionItem value="templates" className="border-0 border-t border-[var(--outline-variant)]">
-              <AccordionTrigger className="flex items-center gap-2 px-5 py-4 hover:no-underline">
-                <LayoutTemplate className="h-4 w-4 shrink-0 text-[var(--primary)]" />
-                <span className="text-label text-[var(--on-surface)]">模板库</span>
+              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5 hover:no-underline">
+                <LayoutTemplate className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
+                <span className="text-[15px] font-semibold text-[var(--on-surface)]">模板库</span>
               </AccordionTrigger>
               <div
-                className="overflow-hidden transition-[max-height,opacity] duration-300 ease-out"
-                style={{
-                  maxHeight: accordionValue === 'templates' ? '70vh' : '0',
-                  opacity: accordionValue === 'templates' ? 1 : 0,
-                }}
+                className={cn(
+                  'overflow-hidden transition-[max-height,opacity] duration-300 ease-out',
+                  accordionValue === 'templates' ? 'max-h-[70vh] opacity-100' : 'max-h-0 opacity-0'
+                )}
               >
                 <div className="px-5 pb-4 pt-0">
-                  <ul className="mt-2 space-y-1">
-                    {EXCEL_TEMPLATES.map((meta) => (
-                      <li
-                        key={meta.id}
-                        className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] py-2 pr-1"
-                      >
-                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--primary-container)]/50">
-                            <FileSpreadsheet className="h-4 w-4 text-[var(--primary)]" />
-                          </div>
-                          <span className="truncate text-caption font-medium text-[var(--on-surface)]">{meta.name}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 shrink-0 rounded-full text-[var(--on-surface-variant)]"
-                          onClick={() => handleDownloadTemplate(meta)}
-                          disabled={templateDownloadingId !== null}
-                          aria-label={`下载 ${meta.fileName}`}
-                        >
-                          {templateDownloadingId === meta.id ? (
-                            <span className="text-tiny text-[var(--on-surface-muted)]">…</span>
-                          ) : (
-                            <Download className="h-5 w-5" />
-                          )}
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
+                  <TemplateList
+                    compact
+                    downloadingId={templateDownloadingId}
+                    onDownload={handleDownloadTemplate}
+                  />
                 </div>
               </div>
             </AccordionItem>
           </Accordion>
         </section>
 
-        <section className="card-soft overflow-hidden p-0">
+        <section className="rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
           <Button
             variant="ghost"
-            className="h-[var(--touch-target)] w-full justify-start rounded-none border-0 px-5 text-label font-medium text-[var(--on-surface)]"
+            className="h-14 w-full justify-start gap-2.5 rounded-none border-0 px-5 text-[15px] font-semibold text-[var(--on-surface)] transition-all duration-75 active:bg-[var(--surface-2)] active:scale-[0.99]"
+            onClick={() => navigate(currentId ? `/history/${currentId}` : '/history')}
+          >
+            <HistoryIcon className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
+            历史考勤
+          </Button>
+        </section>
+
+        <section className="rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
+          <Button
+            variant="ghost"
+            className="h-14 w-full justify-start rounded-none border-0 px-5 text-[16px] font-medium text-[var(--error)] transition-all duration-75 active:bg-[var(--error-container)] active:scale-[0.99]"
             onClick={() => { storage.saveAuth(false); navigate('/login', { replace: true }) }}
           >
             退出登录
@@ -231,24 +218,24 @@ export default function Settings() {
       </main>
 
       <AlertDialog open={!!deleteConfirmClass} onOpenChange={(open) => !open && setDeleteConfirmClass(null)}>
-        <AlertDialogContent className="left-1/2 right-auto top-1/2 bottom-auto flex h-auto min-h-0 max-h-[66.67vh] w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <AlertDialogContent>
           <AlertDialogHeader className="text-center sm:text-center">
-            <AlertDialogTitle className="text-title text-[var(--on-surface)] block text-center">确定删除该班级？</AlertDialogTitle>
+            <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">确定删除该班级？</AlertDialogTitle>
             <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)]">
               {deleteConfirmClass ? `删除「${deleteConfirmClass.name}」后，其学生与考勤记录将一并清除，且无法恢复。` : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel className="!h-8 min-h-0 rounded-[var(--radius-sm)] !border-[var(--outline)] !bg-[var(--surface)] px-3 py-0 text-caption !text-[var(--on-surface)]">取消</AlertDialogCancel>
-            <AlertDialogAction className="!h-8 min-h-0 rounded-[var(--radius-sm)] border-0 !bg-[var(--primary)] px-3 py-0 !text-white text-caption" onClick={handleConfirmDelete}>确定删除</AlertDialogAction>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmDelete}>确定删除</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="left-1/2 right-auto top-1/2 bottom-auto w-[min(calc(100vw-2rem),28rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-elevation-2">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-title text-[var(--on-surface)]">添加班级</DialogTitle>
+            <DialogTitle className="text-dialog-title text-[var(--on-surface)]">添加班级</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">输入新班级名称</DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">

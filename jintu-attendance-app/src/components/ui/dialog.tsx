@@ -19,6 +19,10 @@ function DialogClose(props: React.ComponentProps<typeof DialogPrimitive.Close>) 
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+/** 弹窗内容区：padding 24px(8pt 网格)，区块 gap 16px；与 AlertDialog 一致 */
+const dialogContentBase =
+  'fixed z-50 flex flex-col gap-4 left-1/2 right-auto top-1/2 bottom-auto w-[min(calc(100vw-2rem),28rem)] max-w-md max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-[0_8px_40px_rgba(0,0,0,0.12)] opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100'
+
 function DialogOverlay({
   className,
   ...props
@@ -27,7 +31,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/45',
+        'fixed inset-0 z-50 bg-black/45 opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100',
         className
       )}
       {...props}
@@ -46,8 +50,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full gap-4 bg-[var(--surface)] duration-200',
-          'top-[var(--safe-top)] bottom-[var(--safe-bottom)] left-[var(--safe-left)] right-[var(--safe-right)] m-auto max-h-[85vh] translate-x-0 translate-y-0 overflow-auto rounded-[var(--radius-md)]',
+          dialogContentBase,
           className
         )}
         {...props}
@@ -89,7 +92,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn('text-title leading-tight', className)}
+      className={cn('text-dialog-title leading-tight', className)}
       {...props}
     />
   )

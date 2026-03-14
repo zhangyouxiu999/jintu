@@ -1,28 +1,32 @@
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo, type CSSProperties } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import gsap from 'gsap'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { GripVertical, Pencil, Trash2 } from 'lucide-react'
-import type { Student } from '@/types'
-
-/** 序号 45px + 姓名内容自适应 + 考勤状态内容宽度靠右、下行右侧留边距更大 */
-const GRID_COLS = '45px minmax(2.5rem, 1fr) auto'
-const GRID_COLS_EDIT = '45px minmax(2.5rem, 1fr)'
+import type { AttendanceStatus, Student } from '@/types'
 
 interface SortableStudentRowProps {
   student: Student
   index: number
   showEdit?: boolean
   showIndex?: boolean
-  /** 由父组件传入，避免每行异步 setState 导致进入页面时大量重绘闪烁 */
   isAndroid?: boolean
   onIndexChange?: (id: string, newIndex: string) => void
-  onStatus: (id: string, status: number) => void
+  onStatus: (id: string, status: AttendanceStatus) => void
   onEdit: (id: string, name: string) => void
   onDelete: (id: string) => void
 }
+
+// 状态配置：未选中用 outline 样式，选中时为对应实色（通过 className 覆盖）
+const STATUS_CONFIG = {
+  1: { label: '已到', active: '!bg-[var(--success)] !text-white !border-[var(--success)]' },
+  2: { label: '请假', active: '!bg-[var(--leave)] !text-white !border-[var(--leave)]' },
+  3: { label: '晚到', active: '!bg-[var(--primary)] !text-white !border-[var(--primary)]' },
+  0: { label: '未到', active: '!bg-[var(--on-surface-muted)] !text-white !border-[var(--on-surface-muted)]' },
+} as const
 
 function SortableStudentRow({
   student,
@@ -40,24 +44,24 @@ function SortableStudentRow({
   })
   const [inputValue, setInputValue] = useState(index.toString())
   const rowRef = useRef<HTMLDivElement>(null)
-  const prevStatusRef = useRef<number | null>(null)
+  const prevStatusRef = useRef<AttendanceStatus | null>(null)
 
   useEffect(() => {
     setInputValue(index.toString())
   }, [index])
 
-  // 考勤状态变化时：行轻微缩放 + 高亮反馈
+  // 状态变化时：行轻微弹动反馈
   useEffect(() => {
     const prev = prevStatusRef.current
     prevStatusRef.current = student.attendanceStatus
-    if (prev === null) return // 首屏不播动画
+    if (prev === null) return
     if (prev === student.attendanceStatus) return
     const el = rowRef.current
     if (!el) return
     gsap.fromTo(
       el,
-      { scale: 1.02, boxShadow: '0 0 0 2px var(--primary-container)' },
-      { scale: 1, boxShadow: 'none', duration: 0.35, ease: 'power2.out', overwrite: true }
+      { scaleX: 1.015 },
+      { scaleX: 1, duration: 0.28, ease: 'power2.out', overwrite: true }
     )
   }, [student.attendanceStatus])
 
@@ -65,38 +69,35 @@ function SortableStudentRow({
     if (inputValue !== index.toString() && onIndexChange) onIndexChange(student.id, inputValue)
   }
 
-  /** 竖线：当前背景色加深，偏柔不抢眼 */
-  const getLeftBorderColor = () => {
+  // 左侧状态指示条颜色
+  const getIndicatorColor = () => {
     switch (student.attendanceStatus) {
-      case 1: return 'var(--success-border)'
-      case 2: return 'var(--leave-border)'
-      case 3: return 'var(--late-border)'
-      default: return 'var(--surface-border)'
+      case 1: return 'var(--success)'
+      case 2: return 'var(--leave)'
+      case 3: return 'var(--primary)'
+      default: return 'transparent'
     }
   }
 
+  // 行背景：状态对应极淡色
   const getRowBg = () => {
     switch (student.attendanceStatus) {
-      case 1: return 'bg-[var(--success-container)]'
-      case 2: return 'bg-[var(--leave-container)]'
-      case 3: return 'bg-[var(--late-container)]'
-      default: return 'bg-[var(--surface)]'
+      case 1: return 'bg-[rgba(52,199,89,0.04)]'
+      case 2: return 'bg-[rgba(255,159,10,0.04)]'
+      case 3: return 'bg-[var(--primary)]/[0.04]'
+      default: return 'bg-white'
     }
   }
 
-  /** 修改学生时：行内从右向左滑动露出删除区。拖拽时用 sortable 的 transition，否则对左边框/背景做过渡 */
-  const rowStyle: React.CSSProperties = {
+  const rowStyle: CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: transform != null ? transition : 'border-color 0.3s ease-out, background-color 0.3s ease-out, box-shadow 0.3s ease-out',
+    transition: transform != null
+      ? transition
+      : 'background-color 0.22s cubic-bezier(0.25,0.46,0.45,0.94)',
     position: 'relative',
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 1000 : 'auto',
-    borderLeftWidth: '2px',
-    borderLeftStyle: 'solid',
-    borderLeftColor: getLeftBorderColor(),
   }
-
-  const DELETE_STRIP_WIDTH = 80
 
   const setRef = (el: HTMLDivElement | null) => {
     setNodeRef(el)
@@ -109,124 +110,101 @@ function SortableStudentRow({
       style={rowStyle}
       {...attributes}
       className={cn(
-        'flex w-full items-stretch overflow-hidden py-2 pl-2 pr-6',
-        getRowBg()
+        'relative flex min-h-[44px] w-full items-center overflow-hidden',
+        getRowBg(),
+        isDragging && 'rounded-2xl shadow-[0_6px_24px_rgba(0,0,0,0.10)]'
       )}
     >
-      {/* 主内容区：修改学生时为 grid 两列（序号+姓名），否则为 grid 三列（+考勤状态） */}
+      {/* 左侧状态指示条 */}
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: showEdit ? GRID_COLS_EDIT : GRID_COLS,
-          gap: '0.5rem 1.5rem',
-          alignItems: 'center',
-          flex: 1,
-          minWidth: 0,
-          transition: 'margin-right 0.25s ease',
-          marginRight: showEdit ? 0 : 0,
-        }}
-        className="items-stretch"
+        className="absolute left-0 top-0 h-full w-[3px] transition-[background-color] duration-200"
+        style={{ backgroundColor: getIndicatorColor() }}
+      />
+
+      {/* 拖拽手柄 */}
+      <div
+        {...listeners}
+        className="flex h-full min-h-[44px] w-9 shrink-0 cursor-grab touch-none items-center justify-center pl-3 active:cursor-grabbing"
+        aria-label="拖动排序"
       >
-        <div className="flex min-h-0 items-center gap-1.5">
-          <div
-            {...listeners}
-            className="group flex h-full min-h-[2.5rem] cursor-grab active:cursor-grabbing touch-none items-center justify-center self-stretch rounded px-1.5 transition-colors active:bg-[var(--outline-variant)]"
-            aria-label="拖动排序"
+        <GripVertical className="h-4 w-4 text-[var(--outline)]" strokeWidth={2} />
+      </div>
+
+      {/* 序号 */}
+      {showIndex && (
+        <div className="mr-1 w-5 shrink-0">
+          {onIndexChange ? (
+            <Input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onBlur={handleIndexBlur}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              className="h-4 w-full rounded-[5px] border border-[var(--outline-subtle)] bg-[var(--surface-2)] px-0.5 py-0 text-center text-[10px] font-medium leading-tight text-[var(--on-surface-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/40"
+            />
+          ) : (
+            <span className="block text-center text-[10px] font-medium leading-tight tabular-nums text-[var(--on-surface-muted)]">{index}</span>
+          )}
+        </div>
+      )}
+
+      {/* 姓名 */}
+      <div className="min-w-0 flex-1 pl-1">
+        <span className={cn(
+          'block truncate text-[13px] font-medium text-[var(--on-surface)]',
+          isAndroid ? 'max-w-[5.5em]' : 'max-w-[7em] sm:max-w-none'
+        )}>
+          {student.name}
+        </span>
+      </div>
+
+      {/* 考勤状态按钮组 or 编辑/删除 */}
+      {showEdit ? (
+        // 编辑模式：编辑 + 删除
+        <div className="flex shrink-0 items-center gap-1 pr-3">
+          <button
+            type="button"
+            onClick={() => onEdit(student.id, student.name)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--on-surface-muted)] transition-all duration-75 active:scale-[0.88] active:bg-[var(--surface-2)]"
+            aria-label="编辑"
           >
-            <GripVertical className="h-4 w-4 text-[var(--on-surface-muted)] transition-transform group-hover:scale-110 group-active:scale-100" />
-          </div>
-          {showIndex &&
-            (onIndexChange ? (
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onBlur={handleIndexBlur}
-                onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                className="w-7 h-5 rounded-[var(--radius-sm)] border border-[var(--outline)] bg-[var(--surface-2)] text-center text-tiny font-medium text-[var(--on-surface-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)] transition-all"
-              />
-            ) : (
-              <span className="text-tiny font-medium tabular-nums text-[var(--on-surface-muted)]">{index}</span>
-            ))}
+            <Pencil className="h-[16px] w-[16px]" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(student.id)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--error)] transition-all duration-75 active:scale-[0.88] active:bg-[var(--error-container)]"
+            aria-label="删除"
+          >
+            <Trash2 className="h-[16px] w-[16px]" strokeWidth={1.5} />
+          </button>
         </div>
-        <div className="flex min-w-0 items-center gap-2 pl-3">
-          <span className={cn('min-w-0 truncate text-sm font-medium text-[var(--on-surface)]', showEdit && 'flex-1', isAndroid ? 'max-w-[5.5em]' : 'max-w-[80px] sm:max-w-none')}>{student.name}</span>
+      ) : (
+        // 点名模式：4 个状态按钮横排
+        <div className="flex shrink-0 items-center gap-[5px] pr-3">
+          {([1, 2, 3, 0] as AttendanceStatus[]).map((s) => {
+            const cfg = STATUS_CONFIG[s]
+            const isActive = student.attendanceStatus === s
+            return (
+              <Button
+                key={s}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onStatus(student.id, s)}
+                className={cn(
+                  'h-6 min-w-[32px] rounded-md border-[var(--outline-subtle)] px-2 !text-[10px] font-semibold',
+                  isActive && cfg.active
+                )}
+              >
+                {cfg.label}
+              </Button>
+            )
+          })}
         </div>
-        {!showEdit && (
-        <div className="grid w-max max-w-full grid-cols-[auto_auto] gap-1 justify-self-end">
-        <button
-          type="button"
-          className={cn(
-            'h-7 w-max min-w-0 border px-2.5 rounded-[var(--radius-sm)] text-[10px] font-bold transition-all duration-200',
-            student.attendanceStatus === 1 ? 'border-transparent bg-[var(--success)] text-white' : 'border-[var(--outline)] bg-[var(--surface)] text-[var(--success)]'
-          )}
-          onClick={() => onStatus(student.id, 1)}
-        >
-          已到
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'h-7 w-max min-w-0 border px-2.5 rounded-[var(--radius-sm)] text-[10px] font-bold transition-all duration-200',
-            student.attendanceStatus === 2 ? 'border-transparent bg-[var(--leave)] text-white' : 'border-[var(--outline)] bg-[var(--surface)] text-[var(--leave)]'
-          )}
-          onClick={() => onStatus(student.id, 2)}
-        >
-          请假
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'h-7 w-max min-w-0 border px-2.5 rounded-[var(--radius-sm)] text-[10px] font-bold transition-all duration-200',
-            student.attendanceStatus === 3 ? 'border-transparent bg-[var(--late)] text-white' : 'border-[var(--outline)] bg-[var(--surface)] text-[var(--late)]'
-          )}
-          onClick={() => onStatus(student.id, 3)}
-        >
-          晚到
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'h-7 w-max min-w-0 border px-2.5 rounded-[var(--radius-sm)] text-[10px] font-bold transition-all duration-200',
-            student.attendanceStatus === 0 ? 'border-transparent bg-[var(--on-surface-muted)] text-white' : 'border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface-muted)]'
-          )}
-          onClick={() => onStatus(student.id, 0)}
-        >
-          未到
-        </button>
-        </div>
-        )}
-      </div>
-      {/* 修改学生时：右侧删除区从右向左滑入 */}
-      <div
-        className="flex shrink-0 items-center justify-end gap-0.5 bg-[var(--error)]/10 transition-[width] duration-300 ease-out"
-        style={{
-          width: showEdit ? DELETE_STRIP_WIDTH : 0,
-          minWidth: showEdit ? DELETE_STRIP_WIDTH : 0,
-          overflow: 'hidden',
-        }}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full text-[var(--on-surface-variant)]"
-          onClick={() => onEdit(student.id, student.name)}
-          aria-label="编辑"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full text-[var(--error)]"
-          onClick={() => onDelete(student.id)}
-          aria-label="删除"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
+      )}
     </div>
   )
 }

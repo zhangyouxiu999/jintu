@@ -175,7 +175,7 @@ export function SwipeableClassRow({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-[var(--radius-sm)]"
+      className="relative overflow-hidden rounded-xl"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -186,8 +186,7 @@ export function SwipeableClassRow({
     >
       {canDelete && (
         <div
-          className="absolute right-0 top-0 flex h-full w-[72px] items-center justify-center bg-[#FF3B30]"
-          style={{ height: '100%' }}
+          className="absolute right-0 top-0 flex h-full w-[72px] items-center justify-center rounded-r-xl bg-[var(--error)]"
         >
           <button
             type="button"
@@ -196,24 +195,30 @@ export function SwipeableClassRow({
               e.stopPropagation()
               onDelete()
             }}
-            className="flex h-full w-full items-center justify-center gap-1 text-label font-medium text-white active:bg-black/10"
+            className="flex h-full w-full flex-col items-center justify-center gap-[2px] text-white transition-opacity duration-75 active:opacity-60"
             aria-label="删除"
           >
-            <Trash2 className="h-4 w-4" />
-            删除
+            <Trash2 className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            <span className="text-[11px] font-semibold tracking-tight">删除</span>
           </button>
         </div>
       )}
       <div
         className={cn(
-          'relative z-10 flex w-full items-center bg-[var(--surface)] px-3 py-2.5 transition-transform duration-150',
-          isCurrent ? 'bg-[var(--surface-2)]' : 'hover:bg-[var(--surface-2)]/70'
+          'relative z-10 flex w-full items-center px-4 py-3',
+          'transition-[transform,background-color] duration-200 ease-out',
+          isCurrent
+            ? 'bg-[var(--primary)]/[0.07]'
+            : 'bg-[var(--surface)] active:bg-[var(--surface-2)]'
         )}
         style={{
           transform: `translateX(${displayOffset}px)`,
         }}
       >
-        <span className="min-w-0 flex-1 truncate text-left text-caption font-medium text-[var(--on-surface)]">
+        <span className={cn(
+          'min-w-0 flex-1 truncate text-left text-[14px] font-semibold',
+          isCurrent ? 'text-[var(--primary)]' : 'text-[var(--on-surface)]'
+        )}>
           {classItem.name}
         </span>
       </div>

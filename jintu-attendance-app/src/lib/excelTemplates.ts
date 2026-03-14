@@ -2,26 +2,11 @@
  * Excel 模板生成与下载：与点名/课程表/成绩单导入格式一致，便于用户填写后导入。
  */
 import type { WorkBook } from 'xlsx'
-
-/** 课程表第一列节次标签（与 Schedule 页 ROW_LABEL_TO_PERIOD 一致） */
-const SCHEDULE_ROW_LABELS = [
-  '第一节课',
-  '第二节课',
-  '第三节课',
-  '第四节课',
-  '午休',
-  '第五节课',
-  '第六节课',
-  '第七节课',
-  '第八节课',
-  '晚饭',
-  '晚一',
-  '晚二',
-]
+import { SCHEDULE_ROW_LABELS, SCHEDULE_WEEKDAY_NAMES } from '@/lib/schedule'
 
 /** 生成「课程表」导入模板：第一行为周一～周日，第一列为节次标签。 */
 export function buildScheduleTemplate(): (string | number)[][] {
-  const header = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const header = ['', ...SCHEDULE_WEEKDAY_NAMES]
   const rows: (string | number)[][] = [header]
   for (const label of SCHEDULE_ROW_LABELS) {
     rows.push([label, '', '', '', '', '', '', ''])

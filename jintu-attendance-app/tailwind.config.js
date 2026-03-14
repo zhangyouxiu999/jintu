@@ -20,7 +20,7 @@ export default {
         'accordion-up': 'accordion-up 0.25s ease-in',
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: 'var(--outline)',
@@ -45,11 +45,11 @@ export default {
         full: 'var(--radius-full)',
       },
       boxShadow: {
-        'elevation-1': '0 2px 10px rgba(28, 27, 24, 0.04), 0 1px 2px rgba(28, 27, 24, 0.04)',
-        'elevation-2': '0 8px 28px rgba(28, 27, 24, 0.06), 0 2px 8px rgba(28, 27, 24, 0.04)',
-        'elevation-bar': '0 -4px 24px rgba(28, 27, 24, 0.06)',
-        'elevation-card': '0 4px 20px rgba(28, 27, 24, 0.04), 0 1px 4px rgba(28, 27, 24, 0.03)',
-        'glow-primary': '0 0 0 3px rgba(79, 70, 229, 0.25)',
+        'elevation-1': '0 2px 10px rgba(28, 28, 30, 0.04), 0 1px 2px rgba(28, 28, 30, 0.04)',
+        'elevation-2': '0 8px 28px rgba(28, 28, 30, 0.06), 0 2px 8px rgba(28, 28, 30, 0.04)',
+        'elevation-bar': '0 -4px 24px rgba(28, 28, 30, 0.06)',
+        'elevation-card': '0 4px 20px rgba(28, 28, 30, 0.04), 0 1px 4px rgba(28, 28, 30, 0.03)',
+        'glow-primary': '0 0 0 3px rgba(0, 122, 255, 0.25)',
       },
     },
   },

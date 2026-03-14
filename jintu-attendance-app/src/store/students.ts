@@ -19,11 +19,10 @@ export async function getByClassId(classId: string): Promise<StudentEntity[]> {
 }
 
 /** 从本地持久化恢复（启动时调用） */
-export function hydrateFromPersisted(data: unknown): void {
-  if (!Array.isArray(data)) return
+export function hydrateFromPersisted(data: StudentEntity[]): void {
   map.clear()
   byClass.clear()
-  for (const item of data as StudentEntity[]) {
+  for (const item of data) {
     if (item?.id == null || item?.classId == null) continue
     map.set(item.id, item)
     const list = byClass.get(item.classId) ?? []

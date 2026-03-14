@@ -1,50 +1,27 @@
 import { useCallback } from 'react'
+import type { AttendanceStatus, AttendanceStatusMap } from '@/types'
 import * as attendanceStore from '@/store/attendance'
-import * as classesStore from '@/store/classes'
-import { today } from '@/lib/date'
 
 export function useAttendance(classId: string | undefined) {
   const saveStatus = useCallback(
-    async (studentId: string, status: number) => {
+    async (studentId: string, status: AttendanceStatus) => {
       if (!classId) return
-      const date = today()
-      const period = attendanceStore.getCurrentPeriodId()
-      let snap = await attendanceStore.get(classId, date, period)
-      const cls = await classesStore.getById(classId)
-      const studentIds = cls?.studentOrder ?? []
-      if (!snap) {
-        snap = await attendanceStore.getOrCreate(classId, date, period, studentIds)
-      }
-      const next = { ...snap, statusMap: { ...snap.statusMap, [studentId]: status } }
-      await attendanceStore.upsert(next)
+      await attendanceStore.saveStudentStatus(classId, studentId, status)
     },
     [classId]
   )
 
   const saveAllStatus = useCallback(
-    async (statusMap: Record<string, number>) => {
+    async (statusMap: AttendanceStatusMap) => {
       if (!classId) return
-      const date = today()
-      const period = attendanceStore.getCurrentPeriodId()
-      let snap = await attendanceStore.get(classId, date, period)
-      const cls = await classesStore.getById(classId)
-      const studentIds = cls?.studentOrder ?? []
-      if (!snap) {
-        snap = await attendanceStore.getOrCreate(classId, date, period, studentIds)
-      }
-      await attendanceStore.upsert({ ...snap, statusMap })
+      await attendanceStore.saveCurrentStatusMap(classId, statusMap)
     },
     [classId]
   )
 
   const confirmReport = useCallback(async () => {
     if (!classId) return
-    const date = today()
-    const period = attendanceStore.getCurrentPeriodId()
-    const snap = await attendanceStore.get(classId, date, period)
-    if (snap) {
-      await attendanceStore.upsert({ ...snap, confirmedAt: new Date().toISOString() })
-    }
+    await attendanceStore.confirmCurrentReport(classId)
   }, [classId])
 
   return { saveStatus, saveAllStatus, confirmReport, getCurrentPeriodId: attendanceStore.getCurrentPeriodId }

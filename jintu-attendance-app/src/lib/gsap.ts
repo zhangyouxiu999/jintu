@@ -30,6 +30,9 @@ export const pageIn = {
     x: 0,
     duration: DURATION.slow,
     ease: EASE.out,
+    // 动画结束后清除 GSAP 留下的内联 transform
+    // 否则 backdrop-filter 和 position:fixed 会因祖先 transform 创建新 stacking context 而失效
+    clearProps: 'transform',
   },
 }
 
@@ -51,6 +54,18 @@ export const pageInFromLeft = {
     x: 0,
     duration: DURATION.slow,
     ease: EASE.out,
+    clearProps: 'transform',
+  },
+}
+
+/** 页面进入（仅透明度）：用于含 sticky 的页面，避免 transform 破坏吸顶 */
+export const pageInOpacityOnly = {
+  from: { opacity: 0 },
+  to: {
+    opacity: 1,
+    duration: DURATION.slow,
+    ease: EASE.out,
+    clearProps: 'transform',
   },
 }
 

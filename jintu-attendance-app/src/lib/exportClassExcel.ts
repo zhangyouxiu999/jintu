@@ -2,18 +2,11 @@
  * 导出班级全部表单为带样式的 Excel（与模板风格一致：边框、表头加粗、居中）
  */
 import ExcelJS from 'exceljs'
-import type { ClassEntity } from '@/types'
-import type { StudentEntity } from '@/types'
-import type { AttendanceSnapshot } from '@/types'
-import type { GradesPeriod } from '@/store/storage'
+import type { AttendanceSnapshot, ClassEntity, GradesPeriod, ScheduleCellMap, StudentEntity } from '@/types'
 import { PERIOD_NAMES } from '@/lib/period'
+import { ROW_LABEL_TO_PERIOD, SCHEDULE_ROW_LABELS } from '@/lib/schedule'
 
 const WEEKDAY_NAMES_TEMPLATE = ['周一', '周二', '周三', '周四', '周五', '周六']
-const SCHEDULE_ROW_LABELS = ['第一节课', '第二节课', '第三节课', '第四节课', '午休', '第五节课', '第六节课', '第七节课', '第八节课', '晚饭', '晚一', '晚二']
-const SCHEDULE_ROW_TO_KEY: Record<string, string> = {
-  第一节课: '一', 第二节课: '二', 第三节课: '三', 第四节课: '四', 午休: '中午休息',
-  第五节课: '五', 第六节课: '六', 第七节课: '七', 第八节课: '八', 晚饭: '下午休息', 晚一: '晚一', 晚二: '晚二',
-}
 
 const thinBorder = {
   top: { style: 'thin' as const },
@@ -107,7 +100,7 @@ export interface ExportClassData {
   cls: ClassEntity
   students: StudentEntity[]
   snapshots: AttendanceSnapshot[]
-  scheduleData: Record<string, string>
+  scheduleData: ScheduleCellMap
   periods: GradesPeriod[]
   sortedStudents: StudentEntity[]
   studentNames: Record<string, string>
@@ -158,7 +151,7 @@ export async function buildClassExportWorkbook(data: ExportClassData): Promise<A
   wsSchedule.addRow([`${cls.name}类课程表`])
   wsSchedule.addRow(['', ...WEEKDAY_NAMES_TEMPLATE])
   for (const label of SCHEDULE_ROW_LABELS) {
-    const key = SCHEDULE_ROW_TO_KEY[label] ?? label
+    const key = ROW_LABEL_TO_PERIOD[label] ?? label
     const row = [label, ...WEEKDAY_NAMES_TEMPLATE.map((day) => scheduleData[`${day}_${key}`] ?? '')]
     wsSchedule.addRow(row)
   }
@@ -181,6 +174,22 @@ export async function buildClassExportWorkbook(data: ExportClassData): Promise<A
     styleGradeSheet(wsGrade, gradeColCount)
   }
 
+  const buf = await wb.xlsx.writeBuffer()
+  return buf as ArrayBuffer
+}
+
+/** 仅导出学生名单（序号、姓名），用于「导出学生名单」功能 */
+export async function buildStudentListWorkbook(
+  _className: string,
+  students: Array<{ id: string; name: string }>
+): Promise<ArrayBuffer> {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('学生名单', { views: [{ state: 'frozen', ySplit: 1 }] })
+  ws.addRow(['序号', '姓名'])
+  students.forEach((s, i) => ws.addRow([i + 1, s.name]))
+  styleSheet(ws, 1)
+  ws.getColumn(1).width = 8
+  ws.getColumn(2).width = 14
   const buf = await wb.xlsx.writeBuffer()
   return buf as ArrayBuffer
 }
