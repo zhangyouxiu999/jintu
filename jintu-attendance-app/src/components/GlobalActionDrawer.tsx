@@ -1,5 +1,6 @@
 import { FileDown, FileUp, type LucideIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export interface GlobalActionItem {
@@ -36,15 +37,14 @@ function ActionRow({
   destructive,
 }: GlobalActionItem) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-4 rounded-2xl px-3 py-3 text-left transition-all duration-200 active:scale-[0.97] active:opacity-70 disabled:opacity-30',
-        destructive
-          ? 'text-[var(--error)] active:bg-[var(--error-container)]'
-          : 'text-[var(--on-surface)] active:bg-[var(--surface-2)]'
+        'flex w-full items-center gap-4 rounded-2xl px-3 py-3 text-left disabled:opacity-30',
+        destructive ? 'text-[var(--error)]' : 'text-[var(--on-surface)]'
       )}
     >
       <span className={cn(
@@ -54,7 +54,7 @@ function ActionRow({
         {Icon ? <Icon strokeWidth={1.5} className="h-[19px] w-[19px]" /> : null}
       </span>
       <span className="text-[15px] font-medium tracking-tight">{label}</span>
-    </button>
+    </Button>
   )
 }
 

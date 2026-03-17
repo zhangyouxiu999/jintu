@@ -35,7 +35,7 @@ export default function HomePage() {
             请到「我的」→「班级管理」添加班级，列表第一个将作为默认班级并显示在首页。
           </p>
           <Button
-            className="mt-7 h-11 rounded-[14px] bg-[var(--primary)] px-6 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.25)] transition-all duration-75 active:scale-[0.97] active:opacity-90"
+            className="mt-7 h-11 rounded-[14px] bg-[var(--primary)] px-6 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.25)]"
             onClick={() => navigate('/classes')}
           >
             去班级管理

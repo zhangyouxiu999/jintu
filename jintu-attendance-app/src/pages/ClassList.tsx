@@ -31,7 +31,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { animateStagger } from '@/lib/gsap'
 import { getAppName } from '@/lib/appConfig'
 
 export default function ClassList() {
@@ -58,12 +57,6 @@ export default function ClassList() {
   useEffect(() => {
     if (editingTitle) titleInputRef.current?.focus()
   }, [editingTitle])
-
-  useEffect(() => {
-    if (loading || list.length === 0) return
-    const revert = animateStagger(listContainerRef.current, ':scope > div')
-    return revert
-  }, [loading, list.length])
 
   const saveAppTitle = (value: string) => {
     const trimmed = value.trim() || getAppName()
@@ -178,7 +171,7 @@ export default function ClassList() {
               />
             ) : (
               <h1
-                className="flex cursor-pointer flex-col items-center gap-1.5 font-bold tracking-tight text-[var(--on-surface)] transition-opacity duration-150"
+                className="flex cursor-pointer flex-col items-center gap-1.5 font-bold tracking-tight text-[var(--on-surface)]"
                 onClick={() => setEditingTitle(true)}
                 role="button"
                 tabIndex={0}
@@ -203,7 +196,7 @@ export default function ClassList() {
               点击下方按钮新增班级
             </p>
             <Button
-              className="mt-7 h-11 rounded-[14px] bg-[var(--primary)] px-6 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.25)] transition-all duration-75 active:scale-[0.97] active:opacity-90"
+              className="mt-7 h-11 rounded-[14px] bg-[var(--primary)] px-6 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.25)]"
               onClick={() => setDialogOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" strokeWidth={2} />
@@ -217,10 +210,11 @@ export default function ClassList() {
                 key={cls.id}
                 className="rounded-[18px] bg-[var(--surface)] border border-[var(--outline-variant)] flex min-h-[60px] w-full items-center gap-3 px-4 py-3"
               >
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => navigate(`/attendance/${cls.id}`)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left transition-all duration-75 active:opacity-70 active:scale-[0.99]"
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left h-auto py-3"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/70 text-[17px] font-semibold text-[var(--primary)]">
                     {cls.name.charAt(0)}
@@ -228,14 +222,14 @@ export default function ClassList() {
                   <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--on-surface)]">
                     {cls.name}
                   </span>
-                </button>
+                </Button>
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       type="button"
-                      className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-muted)] transition-all duration-75 active:scale-[0.88] active:opacity-70"
+                      className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-muted)]"
                       aria-label="更多"
                     >
                       <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={1.5} />
@@ -288,7 +282,7 @@ export default function ClassList() {
             ))}
 
             <Button
-              className="mt-4 h-11 w-full rounded-[14px] bg-[var(--primary)] text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.22)] transition-all duration-75 active:scale-[0.97] active:opacity-90"
+              className="mt-4 h-11 w-full rounded-[14px] bg-[var(--primary)] text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.22)]"
               onClick={() => setDialogOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" strokeWidth={2} />

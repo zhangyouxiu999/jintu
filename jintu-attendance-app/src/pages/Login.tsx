@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import gsap from 'gsap'
 import { Lock, User } from 'lucide-react'
 import { storage } from '@/store/storage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DURATION, EASE } from '@/lib/gsap'
 import { getAppName, getLoginCredentials } from '@/lib/appConfig'
 
 /** 与 public/icon.svg 一致的 logo */
@@ -51,22 +49,6 @@ export default function Login() {
       setSubmitting(false)
     }
   }
-
-  useEffect(() => {
-    if (!contentRef.current) return
-    const ctx = gsap.context(() => {
-      const el = contentRef.current
-      if (!el) return
-      const logo = el.querySelector('.login-logo')
-      const title = el.querySelector('.login-title')
-      const form = el.querySelector('.login-form')
-      gsap.set([logo, title, form], { opacity: 0, y: 12 })
-      gsap.to(logo, { opacity: 1, y: 0, duration: DURATION.normal, ease: EASE.out })
-      gsap.to(title, { opacity: 1, y: 0, duration: DURATION.normal, delay: 0.06, ease: EASE.out })
-      gsap.to(form, { opacity: 1, y: 0, duration: DURATION.normal, delay: 0.12, ease: EASE.out })
-    }, contentRef.current)
-    return () => ctx.revert()
-  }, [])
 
   if (storage.loadAuth()) {
     return null
@@ -119,7 +101,7 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="h-11 w-full rounded-[14px] bg-[var(--primary)] text-[16px] font-semibold text-white transition-all duration-200 active:scale-[0.97] active:opacity-90 disabled:opacity-60"
+                className="h-11 w-full rounded-[14px] bg-[var(--primary)] text-[16px] font-semibold text-white disabled:opacity-60"
               >
                 {submitting ? '登录中…' : '登录'}
               </Button>

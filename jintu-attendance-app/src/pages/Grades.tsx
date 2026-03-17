@@ -500,13 +500,15 @@ export default function Grades() {
                     姓名
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <button
+                        <Button
                           type="button"
-                          className="rounded p-0.5 text-[var(--on-surface-muted)] active:bg-[var(--surface-hover)]"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="rounded p-0.5 text-[var(--on-surface-muted)] h-8 w-8"
                           aria-label="排序"
                         >
                           <ArrowUpDown className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="center" className="min-w-[8rem]">
                         <DropdownMenuItem onSelect={() => { setSortBy('order'); setSortDir('asc') }}>
@@ -579,13 +581,14 @@ export default function Grades() {
                             className="mx-auto h-8 w-14 rounded border-0 bg-[var(--surface-2)] px-1 text-center text-[13px] outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                           />
                         ) : (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
                             onClick={() => startEdit(s.id, sub)}
-                            className="min-h-[32px] w-full rounded px-1 text-[13px] text-[var(--on-surface)] active:bg-[var(--surface-hover)]"
+                            className="min-h-[32px] h-auto w-full rounded px-1 text-[13px] text-[var(--on-surface)]"
                           >
                             {getScore(s.id, sub) || '—'}
-                          </button>
+                          </Button>
                         )}
                       </td>
                     )
@@ -656,9 +659,10 @@ export default function Grades() {
             style={{ top: menuPosition.top, left: menuPosition.left }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button
+            <Button
               type="button"
-              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-[13px] font-medium text-[var(--on-surface)] active:bg-[var(--surface-hover)]"
+              variant="ghost"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-[13px] font-medium text-[var(--on-surface)] h-auto"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -673,11 +677,12 @@ export default function Grades() {
             >
               <Pencil className="h-4 w-4 shrink-0" />
               修改科目名
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
               disabled={grades.subjects.length <= 1}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-[13px] font-medium text-[var(--error)] active:bg-[var(--surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-[13px] font-medium text-[var(--error)] h-auto disabled:opacity-50 disabled:pointer-events-none"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -689,7 +694,7 @@ export default function Grades() {
             >
               <Trash2 className="h-4 w-4 shrink-0" />
               删除科目
-            </button>
+            </Button>
           </div>,
           document.body
         )}

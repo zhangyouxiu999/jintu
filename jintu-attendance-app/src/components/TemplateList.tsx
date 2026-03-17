@@ -22,7 +22,7 @@ export default function TemplateList({
         <li
           key={meta.id}
           className={cn(
-            compact ? 'flex items-center justify-between gap-3 rounded-xl py-2 pr-1 transition-colors duration-100 active:bg-[var(--surface-2)]' : 'card-soft flex flex-col gap-3 p-4'
+            compact ? 'flex items-center justify-between gap-3 rounded-xl py-2 pr-1' : 'card-soft flex flex-col gap-3 p-4'
           )}
         >
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -45,7 +45,7 @@ export default function TemplateList({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-full text-[var(--on-surface-muted)] transition-[transform,opacity] duration-75 ease-out active:scale-[0.85] active:opacity-70"
+              className="h-9 w-9 shrink-0 rounded-full text-[var(--on-surface-muted)]"
               onClick={() => onDownload(meta)}
               disabled={downloadingId !== null}
               aria-label={`下载 ${meta.fileName}`}
@@ -58,7 +58,7 @@ export default function TemplateList({
             </Button>
           ) : (
             <Button
-              className="h-11 w-full rounded-[14px] bg-[var(--primary)] text-[15px] font-semibold text-white transition-[transform,opacity] duration-75 ease-out active:scale-[0.97] active:opacity-85"
+              className="h-11 w-full rounded-[14px] bg-[var(--primary)] text-[15px] font-semibold text-white"
               onClick={() => onDownload(meta)}
               disabled={downloadingId !== null}
             >

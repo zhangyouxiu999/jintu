@@ -48,7 +48,7 @@ export default function AttendanceEntry() {
         </div>
 
         <Button
-          className="mt-5 h-12 w-full rounded-[16px] bg-[var(--primary)] text-[16px] font-semibold text-white transition-[transform,opacity] duration-75 ease-out active:scale-[0.97] active:opacity-85"
+          className="mt-5 h-12 w-full rounded-[16px] bg-[var(--primary)] text-[16px] font-semibold text-white"
           onClick={() => navigate('/settings')}
         >
           去我的页面设置班级

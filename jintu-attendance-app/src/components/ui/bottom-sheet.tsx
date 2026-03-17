@@ -2,6 +2,7 @@ import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface BottomSheetProps {
   open: boolean
@@ -34,19 +35,21 @@ function BottomSheetContent({
           {title}
         </h2>
         {showCloseButton && onClose ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--on-surface-muted)] transition-colors active:opacity-80"
+            className="-mr-2 h-10 w-10 shrink-0 rounded-full bg-[var(--surface-2)] text-[var(--on-surface-muted)]"
             aria-label="关闭"
           >
             <X className="h-5 w-5" strokeWidth={2} />
-          </button>
+          </Button>
         ) : (
           <div className="w-10 shrink-0" aria-hidden />
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      <div className="touch-scroll min-h-0 max-h-[calc(85dvh-64px)] overflow-y-auto overflow-x-hidden">{children}</div>
     </div>
   )
 }
@@ -82,18 +85,17 @@ function BottomSheetRoot({ open, onOpenChange, children }: BottomSheetProps) {
       aria-label="我的"
     >
       {/* 遮罩：点击关闭 */}
-      <button
+      <Button
         type="button"
-        className="absolute inset-0 bg-black/45 transition-opacity duration-200 ease-out"
+        variant="ghost"
+        className="absolute inset-0 h-full w-full min-w-0 rounded-none bg-black/45"
         aria-label="关闭"
         onClick={handleClose}
       />
-      {/* 抽屉面板：从下向上滑入 */}
+      {/* 抽屉面板：从下向上滑入，高度随内容变化，不撑满屏 */}
       <div
         className={cn(
-          'relative z-10 flex max-h-[90dvh] w-full flex-col transition-transform duration-300 ease-out',
-          'rounded-t-[20px] bg-[var(--surface)] shadow-[0_-4px_24px_rgba(0,0,0,0.12)]',
-          'pb-[env(safe-area-inset-bottom,0px)]',
+          'relative z-10 flex w-full max-h-[85dvh] flex-col rounded-t-[20px] bg-[var(--surface)] shadow-[0_-4px_24px_rgba(0,0,0,0.12)] pb-[env(safe-area-inset-bottom,0px)]',
           visible ? 'translate-y-0' : 'translate-y-full'
         )}
       >

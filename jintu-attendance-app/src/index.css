@@ -126,7 +126,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   html {
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
@@ -155,31 +155,28 @@
     color: var(--on-surface);
   }
   button, a, [role="button"] {
-    /* 基础过渡：transform 100ms 弹出，背景色 150ms 缓入 */
-    transition:
-      transform      100ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-      opacity        100ms ease,
-      background-color 150ms ease,
-      color          150ms ease,
-      border-color   150ms ease,
-      box-shadow     150ms ease;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    /* 指针样式 */
     cursor: default;
     -webkit-touch-callout: none;
-  }
-  input, select, textarea {
-    transition:
-      background-color 150ms ease,
-      border-color    150ms ease,
-      box-shadow      150ms ease;
   }
 }
 
 /* 安全区留白工具类 */
 .pt-safe { padding-top: var(--safe-top); }
 .pb-safe { padding-bottom: var(--safe-bottom); }
+
+/* 触摸滚动区域：iOS 惯性滚动 + 防止滚动链，提升「我的」等抽屉内上滑流畅度 */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* 滚动内区块离屏优化：仅用于非折叠区块，减少「我的」抽屉内上滑时的绘制 */
+.scroll-section-opt {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
 
 /* 横向滚动隐藏滚动条（周历等） */
 .hide-scrollbar { scrollbar-width: none; }
@@ -284,23 +281,6 @@
 }
 .shadow-elevation-2 {
   box-shadow: 0 1px 0 rgba(28, 28, 30, 0.09), 0 2px 12px rgba(28, 28, 30, 0.05);
-}
-
-/* 统一弹簧按压基类：适合所有可点击元素 */
-.press {
-  transition: transform 100ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 100ms ease;
-}
-.press:active {
-  transform: scale(0.94);
-  opacity: 0.78;
-}
-
-/* 大卡片弹性按压 */
-.press-card {
-  transition: transform 120ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-.press-card:active {
-  transform: scale(0.985);
 }
 
 /* 深色模式预留：仅覆盖变量值，组件无需改 */

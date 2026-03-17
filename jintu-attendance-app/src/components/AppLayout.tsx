@@ -6,7 +6,8 @@ import { type GlobalActionConfig } from '@/components/GlobalActionDrawer'
 import { useClassList } from '@/hooks/useClassList'
 import { cn } from '@/lib/utils'
 import { storage } from '@/store/storage'
-import { BottomSheet, BottomSheetContent } from '@/components/ui/bottom-sheet'
+import { Drawer, DrawerContentWithHeader } from '@/components/ui/drawer'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,13 +94,12 @@ function BottomTab({
       to={to}
       className={cn(
         'flex min-w-0 flex-1 flex-col items-center gap-[3px] py-[9px]',
-        'transition-[color] duration-200 active:opacity-55',
         active ? 'text-[var(--primary)]' : 'text-[var(--on-surface-muted)]'
       )}
     >
       <Icon
         strokeWidth={active ? 2 : 1.4}
-        className="h-[23px] w-[23px] shrink-0 transition-[stroke-width] duration-200"
+        className="h-[23px] w-[23px] shrink-0"
       />
       <span className={cn(
         'truncate text-[10px] leading-none tracking-[0.01em]',
@@ -223,14 +223,16 @@ export default function AppLayout() {
               {currentClass?.name ?? '未选择班级'}
             </h1>
 
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setSettingsSheetOpen(true)}
-              className="ml-3 flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full text-[var(--on-surface-variant)] transition-all duration-200 active:opacity-60"
+              className="ml-3 h-11 w-11 shrink-0 rounded-full text-[var(--primary)] [&_svg]:!h-8 [&_svg]:!w-8"
               aria-label="打开我的"
             >
-              <UserCircle2 strokeWidth={1.4} className="h-[24px] w-[24px]" />
-            </button>
+              <UserCircle2 strokeWidth={1.4} />
+            </Button>
           </div>
         </header>
 
@@ -241,17 +243,17 @@ export default function AppLayout() {
           </div>
         </main>
 
-        {/* 我的：从下向上的抽屉（createPortal 实现，挂载到 body） */}
-        <BottomSheet open={settingsSheetOpen} onOpenChange={setSettingsSheetOpen}>
-          <BottomSheetContent
+        {/* 我的：Vaul Drawer，支持下滑关闭手势；关闭背景缩放以减轻 Android 卡顿 */}
+        <Drawer open={settingsSheetOpen} onOpenChange={setSettingsSheetOpen} shouldScaleBackground={false}>
+          <DrawerContentWithHeader
             showCloseButton
             onClose={() => setSettingsSheetOpen(false)}
           >
             <Suspense fallback={<div className="flex min-h-[200px] items-center justify-center text-[var(--on-surface-muted)]">加载中…</div>}>
               <Settings />
             </Suspense>
-          </BottomSheetContent>
-        </BottomSheet>
+          </DrawerContentWithHeader>
+        </Drawer>
 
         {/* 底部 Dock 通过 Portal 挂到 body，跳出 GSAP 动画容器，避免随页面淡出 */}
         {createPortal(
@@ -286,23 +288,22 @@ export default function AppLayout() {
 
               <DropdownMenu open={drawerOpen} onOpenChange={setDrawerOpen} modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
                     aria-label="打开功能菜单"
                     aria-expanded={drawerOpen}
                     className={cn(
-                      'flex h-[50px] w-[50px] shrink-0 flex-col items-center justify-center',
-                      'rounded-full border border-[var(--outline)] bg-[var(--surface)]/80',
-                      'shadow-[0_2px_16px_rgba(0,0,0,0.06)] backdrop-blur-2xl',
-                      'transition-[color] duration-200',
+                      'h-[50px] w-[50px] shrink-0 rounded-full bg-[var(--surface)]/80 shadow-[0_2px_16px_rgba(0,0,0,0.06)] backdrop-blur-2xl',
                       drawerOpen ? 'text-[var(--primary)]' : 'text-[var(--on-surface-muted)]'
                     )}
                   >
                     <LayoutGrid
                       strokeWidth={drawerOpen ? 2 : 1.5}
-                      className="h-[22px] w-[22px] transition-[stroke-width] duration-200"
+                      className="h-[22px] w-[22px]"
                     />
-                  </button>
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   side="top"
@@ -310,7 +311,7 @@ export default function AppLayout() {
                   sideOffset={10}
                   className={cn(
                     'min-w-[11rem] rounded-[16px] border-[var(--outline)] bg-[var(--surface)] p-1.5 shadow-[0_4px_24px_rgba(0,0,0,0.12)]',
-                    'opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100'
+                    'opacity-0 data-[state=open]:opacity-100'
                   )}
                 >
                   {extraActions.length > 0 &&

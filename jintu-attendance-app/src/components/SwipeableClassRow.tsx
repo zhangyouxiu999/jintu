@@ -36,10 +36,9 @@ export function SwipeableClassRow({
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
         className={cn(
           'flex h-11 w-full items-center gap-2 px-4',
-          'transition-[background-color] duration-200 ease-out',
           isCurrent
             ? 'bg-[var(--primary)]/[0.07]'
-            : 'bg-[var(--surface)] active:bg-[var(--surface-2)]'
+            : 'bg-[var(--surface)]'
         )}
       >
         <span
@@ -65,7 +64,7 @@ export function SwipeableClassRow({
               e.stopPropagation()
               onDelete()
             }}
-            className="shrink-0 text-[var(--on-surface-muted)] active:opacity-80"
+            className="shrink-0 text-[var(--on-surface-muted)]"
             aria-label="删除"
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.75} />

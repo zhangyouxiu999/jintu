@@ -26,7 +26,7 @@ export default function BottomNav() {
       <Link
         to="/"
         className={cn(
-          'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors active:scale-[0.97]',
+          'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2',
           isHomeActive ? 'text-[var(--primary)]' : 'text-[var(--on-surface-muted)]'
         )}
       >
@@ -36,7 +36,7 @@ export default function BottomNav() {
       <Link
         to={scheduleTo}
         className={cn(
-          'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors active:scale-[0.97]',
+          'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2',
           isScheduleActive ? 'text-[var(--primary)]' : 'text-[var(--on-surface-muted)]'
         )}
       >
@@ -46,7 +46,7 @@ export default function BottomNav() {
       <Link
         to={gradesTo}
         className={cn(
-          'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors active:scale-[0.97]',
+          'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2',
           isGradesActive ? 'text-[var(--primary)]' : 'text-[var(--on-surface-muted)]'
         )}
       >
@@ -57,7 +57,7 @@ export default function BottomNav() {
         to="/settings"
         className={({ isActive }) =>
           cn(
-            'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors active:scale-[0.97]',
+            'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2',
             isActive ? 'text-[var(--primary)]' : 'text-[var(--on-surface-muted)]'
           )
         }

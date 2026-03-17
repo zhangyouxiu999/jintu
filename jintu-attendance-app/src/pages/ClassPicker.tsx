@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { School } from 'lucide-react'
 import { useClassList } from '@/hooks/useClassList'
 import { Button } from '@/components/ui/button'
-import { animateStagger } from '@/lib/gsap'
 
 export interface ClassPickerProps {
   title: string
@@ -14,12 +13,6 @@ export default function ClassPicker({ title: _title, basePath }: ClassPickerProp
   const navigate = useNavigate()
   const { list, loading } = useClassList()
   const listRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (loading || list.length === 0) return
-    const revert = animateStagger(listRef.current, ':scope > div')
-    return revert
-  }, [loading, list.length])
 
   if (loading) {
     return (
@@ -40,7 +33,7 @@ export default function ClassPicker({ title: _title, basePath }: ClassPickerProp
             <p className="text-display text-[var(--on-surface)]">暂无班级</p>
             <p className="mt-2 text-label text-[var(--on-surface-variant)]">请先在首页新增班级</p>
             <Button
-              className="mt-6 h-10 rounded-[var(--radius-md)] bg-[var(--primary)] px-5 text-label font-semibold text-[var(--on-primary)] shadow-elevation-2 active:scale-[0.98]"
+              className="mt-6 h-10 rounded-[var(--radius-md)] bg-[var(--primary)] px-5 text-label font-semibold text-[var(--on-primary)] shadow-elevation-2"
               onClick={() => navigate('/')}
             >
               去首页
@@ -51,12 +44,13 @@ export default function ClassPicker({ title: _title, basePath }: ClassPickerProp
             {list.map((cls) => (
               <div
                 key={cls.id}
-                className="card-soft flex min-h-12 w-full items-center gap-3 px-4 py-3 transition-shadow"
+                className="card-soft flex min-h-12 w-full items-center gap-3 px-4 py-3"
               >
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => navigate(`${basePath}/${cls.id}`)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99] active:opacity-95"
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left h-auto py-3"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary)]/15 text-label font-semibold text-[var(--primary)]">
                     {cls.name.charAt(0)}
@@ -64,7 +58,7 @@ export default function ClassPicker({ title: _title, basePath }: ClassPickerProp
                   <span className="min-w-0 flex-1 truncate text-label font-medium text-[var(--on-surface)]">
                     {cls.name}
                   </span>
-                </button>
+                </Button>
               </div>
             ))}
           </div>

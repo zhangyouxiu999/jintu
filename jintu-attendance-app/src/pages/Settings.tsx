@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { School, LayoutTemplate, Plus, History as HistoryIcon, RefreshCw, GraduationCap, Trash2 } from 'lucide-react'
 import { useCurrentClassId } from '@/components/AppLayout'
@@ -27,7 +27,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
-import { animateStagger } from '@/lib/gsap'
 import { showToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
@@ -49,11 +48,6 @@ export default function Settings() {
   const [autoResetAttendance, setAutoResetAttendance] = useState(() => storage.loadAutoResetAttendance())
   const [deleteConfirmPeriod, setDeleteConfirmPeriod] = useState<GradesPeriod | null>(null)
   const [gradesRefreshKey, setGradesRefreshKey] = useState(0)
-
-  useEffect(() => {
-    const revert = animateStagger(mainRef.current, ':scope > section')
-    return revert
-  }, [])
 
   const handleAddClass = async () => {
     const name = addName.trim()
@@ -139,21 +133,22 @@ export default function Settings() {
                   </span>
                 )}
               </AccordionTrigger>
-              {/* 自定义可动画内容区：始终在 DOM 中，用 transition 做展开/收起 */}
+              {/* GPU 友好：grid 0fr/1fr 做高度动画，避免 max-height 触发布局抖动 */}
               <div
                 className={cn(
-                  'overflow-hidden transition-[max-height,opacity] duration-300 ease-out',
-                  accordionValue === 'classes' ? 'max-h-[70vh] opacity-100' : 'max-h-0 opacity-0'
+                  'grid',
+                  accordionValue === 'classes' ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                 )}
               >
-                <div className="px-5 pb-4 pt-0">
+                <div className={cn('min-h-0 overflow-hidden', accordionValue === 'classes' && 'max-h-[70vh]')}>
+                  <div className="px-5 pb-4 pt-0">
                   <p className="text-[12px] text-[var(--on-surface-muted)] leading-relaxed">选择默认班级；列表第一个为默认班级，将显示在首页点名。</p>
                   {classListLoading ? (
                     <p className="mt-3 text-[12px] text-[var(--on-surface-muted)]">加载中…</p>
                   ) : classList.length === 0 ? (
                     <Button
                       variant="outline"
-                      className="mt-3 h-10 w-full rounded-[12px] border-[var(--outline)] text-[12px] font-medium text-[var(--on-surface-variant)] transition-all duration-75 active:scale-[0.98] active:opacity-80"
+                      className="mt-3 h-10 w-full rounded-[12px] border-[var(--outline)] text-[12px] font-medium text-[var(--on-surface-variant)]"
                       onClick={() => setAddDialogOpen(true)}
                     >
                       <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
@@ -185,7 +180,7 @@ export default function Settings() {
                       ))}
                       <Button
                         variant="outline"
-                        className="h-10 w-full rounded-[12px] border-[var(--outline)] text-[12px] font-medium text-[var(--on-surface-variant)] transition-all duration-75 active:scale-[0.98] active:opacity-80"
+                        className="h-10 w-full rounded-[12px] border-[var(--outline)] text-[12px] font-medium text-[var(--on-surface-variant)]"
                         onClick={() => setAddDialogOpen(true)}
                       >
                         <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
@@ -193,6 +188,7 @@ export default function Settings() {
                       </Button>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             </AccordionItem>
@@ -210,11 +206,12 @@ export default function Settings() {
               </AccordionTrigger>
               <div
                 className={cn(
-                  'overflow-hidden transition-[max-height,opacity] duration-300 ease-out',
-                  accordionValue === 'grades' ? 'max-h-[70vh] opacity-100' : 'max-h-0 opacity-0'
+                  'grid',
+                  accordionValue === 'grades' ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                 )}
               >
-                <div className="px-5 pb-4 pt-0">
+                <div className={cn('min-h-0 overflow-hidden', accordionValue === 'grades' && 'max-h-[70vh]')}>
+                  <div className="px-5 pb-4 pt-0">
                   {!currentId ? (
                     <p className="text-[12px] text-[var(--on-surface-muted)]">请先在「我的班级」选择班级。</p>
                   ) : (() => {
@@ -228,9 +225,10 @@ export default function Settings() {
                           <Fragment key={p.id}>
                             {index > 0 && <div className="h-px shrink-0 bg-[var(--outline-variant)]" />}
                             <div className="flex min-h-[44px] w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-2.5">
-                              <button
+                              <Button
                                 type="button"
-                                className="flex min-w-0 flex-1 items-center gap-3 text-left text-[13px] font-medium text-[var(--on-surface)] transition-colors active:bg-[var(--surface-2)]"
+                                variant="ghost"
+                                className="flex min-w-0 flex-1 items-center gap-3 text-left text-[13px] font-medium text-[var(--on-surface)] h-auto"
                                 onClick={() => navigate(`/grades/${currentId}`, { state: { periodId: p.id } })}
                               >
                                 <span className="min-w-0 flex-1 truncate">{p.name}</span>
@@ -239,11 +237,13 @@ export default function Settings() {
                                     当前期
                                   </span>
                                 )}
-                              </button>
+                              </Button>
                               {periods.length > 1 && (
-                                <button
+                                <Button
                                   type="button"
-                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--on-surface-muted)] active:bg-[var(--surface-2)] active:text-[var(--error)]"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-8 w-8 shrink-0 rounded-[var(--radius-sm)] text-[var(--on-surface-muted)] active:text-[var(--error)]"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     setDeleteConfirmPeriod(p)
@@ -251,7 +251,7 @@ export default function Settings() {
                                   aria-label={`删除 ${p.name}`}
                                 >
                                   <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
+                                </Button>
                               )}
                             </div>
                           </Fragment>
@@ -259,6 +259,7 @@ export default function Settings() {
                       </div>
                     )
                   })()}
+                  </div>
                 </div>
               </div>
             </AccordionItem>
@@ -270,26 +271,28 @@ export default function Settings() {
               </AccordionTrigger>
               <div
                 className={cn(
-                  'overflow-hidden transition-[max-height,opacity] duration-300 ease-out',
-                  accordionValue === 'templates' ? 'max-h-[70vh] opacity-100' : 'max-h-0 opacity-0'
+                  'grid',
+                  accordionValue === 'templates' ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                 )}
               >
-                <div className="px-5 pb-4 pt-0">
+                <div className={cn('min-h-0 overflow-hidden', accordionValue === 'templates' && 'max-h-[70vh]')}>
+                  <div className="px-5 pb-4 pt-0">
                   <TemplateList
                     compact
                     downloadingId={templateDownloadingId}
                     onDownload={handleDownloadTemplate}
                   />
+                  </div>
                 </div>
               </div>
             </AccordionItem>
           </Accordion>
         </section>
 
-        <section className="rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
+        <section className="scroll-section-opt rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
           <Button
             variant="ghost"
-            className="h-11 w-full justify-start gap-2.5 rounded-none border-0 px-5 text-[13px] font-medium text-[var(--on-surface)] transition-all duration-75 active:bg-[var(--surface-2)] active:scale-[0.99]"
+            className="h-11 w-full justify-start gap-2.5 rounded-none border-0 px-5 text-[13px] font-medium text-[var(--on-surface)]"
             onClick={() => navigate(currentId ? `/history/${currentId}` : '/history')}
           >
             <HistoryIcon className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
@@ -297,7 +300,7 @@ export default function Settings() {
           </Button>
         </section>
 
-        <section className="rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
+        <section className="scroll-section-opt rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
           <div className="flex h-11 items-center justify-between gap-3 px-5">
             <span className="flex min-w-0 items-center gap-2.5 text-[13px] font-medium text-[var(--on-surface)]">
               <RefreshCw className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
@@ -321,10 +324,10 @@ export default function Settings() {
           </p>
         </section>
 
-        <section className="rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
+        <section className="scroll-section-opt rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
           <Button
             variant="ghost"
-            className="h-11 w-full justify-start rounded-none border-0 px-5 text-[13px] font-medium text-[var(--on-surface-muted)] transition-all duration-75 active:bg-[var(--surface-2)] active:scale-[0.99]"
+            className="h-11 w-full justify-start rounded-none border-0 px-5 text-[13px] font-medium text-[var(--on-surface-muted)]"
             onClick={() => { storage.saveAuth(false); navigate('/login', { replace: true }) }}
           >
             退出登录

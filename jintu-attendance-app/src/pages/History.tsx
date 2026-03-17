@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { History as HistoryIcon, Download, ChevronDown, ChevronUp } from 'lucide-react'
-import { animateStagger } from '@/lib/gsap'
 import * as attendanceStore from '@/store/attendance'
 import * as classesStore from '@/store/classes'
 import * as studentsStore from '@/store/students'
@@ -59,20 +58,6 @@ export default function History() {
   }, [classId])
 
   const currentClass = classId ? classes.find((c) => c.id === classId) : null
-
-  useEffect(() => {
-    if (!classId && classes.length > 0) {
-      const revert = animateStagger(classButtonsRef.current, ':scope > *')
-      return revert
-    }
-  }, [classId, classes.length])
-
-  useEffect(() => {
-    if (classId && list.length > 0) {
-      const revert = animateStagger(snapshotListRef.current, ':scope > li')
-      return revert
-    }
-  }, [classId, list.length])
 
   const handleExport = useCallback(async () => {
     const fileName = `${currentClass?.name ?? '考勤'}历史考勤.xlsx`
@@ -138,7 +123,7 @@ export default function History() {
             <p className="mt-0.5 text-[13px] text-[var(--on-surface-muted)]">查看该班级已确认的考勤记录</p>
             <div ref={classButtonsRef} className="mt-3 flex flex-wrap gap-2">
               {classes.map((c) => (
-                <Button key={c.id} variant="outline" size="sm" className="h-9 rounded-[12px] border-[var(--outline)] bg-[var(--surface)] px-4 text-[13px] font-medium text-[var(--on-surface-variant)] transition-all duration-75 active:scale-[0.96] active:opacity-80" onClick={() => navigate(`/history/${c.id}`)}>{c.name}</Button>
+                <Button key={c.id} variant="outline" size="sm" className="h-9 rounded-[12px] border-[var(--outline)] bg-[var(--surface)] px-4 text-[13px] font-medium text-[var(--on-surface-variant)]" onClick={() => navigate(`/history/${c.id}`)}>{c.name}</Button>
               ))}
             </div>
           </div>
@@ -170,26 +155,28 @@ export default function History() {
                     const isExpanded = expandedDate === date
                     return (
                       <li key={date} className="rounded-[18px] bg-[var(--surface)] border border-[var(--outline-variant)] overflow-hidden">
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
                           onClick={() => setExpandedDate(isExpanded ? null : date)}
-                          className="flex min-h-[50px] w-full items-center justify-between px-4 py-3.5 text-left transition-all duration-75 active:bg-[var(--surface-2)]/80 active:scale-[0.99]"
+                          className="flex min-h-[50px] w-full items-center justify-between px-4 py-3.5 text-left h-auto"
                         >
                           <span className="text-[15px] font-semibold text-[var(--on-surface)]">{date}</span>
                           {isExpanded ? <ChevronUp className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} /> : <ChevronDown className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} />}
-                        </button>
+                        </Button>
                         {isExpanded && (
                           <ul className="border-t border-[var(--outline-variant)]/80 bg-[var(--surface-2)]/60 px-2 pb-1.5 pt-0.5">
                             {periods.map((snap, i) => (
                               <li key={snap.id} className={i > 0 ? 'border-t border-[var(--outline-variant)]/60' : ''}>
-                                <button
+                                <Button
                                   type="button"
+                                  variant="ghost"
                                   onClick={() => setDetailSnap(snap)}
-                                  className="flex min-h-[44px] w-full items-center justify-between rounded-[14px] px-3 py-2.5 text-left transition-all duration-75 active:bg-[var(--surface-2)] active:scale-[0.99]"
+                                  className="flex min-h-[44px] w-full items-center justify-between rounded-[14px] px-3 py-2.5 text-left h-auto"
                                 >
                                   <span className="text-[14px] font-medium text-[var(--on-surface-variant)]">{PERIOD_NAMES[snap.period] ?? '—'}</span>
                                   <span className="text-[12px] tabular-nums text-[var(--on-surface-muted)]">实到 {Object.values(snap.statusMap).filter((s) => s === 1).length} 人</span>
-                                </button>
+                                </Button>
                               </li>
                             ))}
                           </ul>

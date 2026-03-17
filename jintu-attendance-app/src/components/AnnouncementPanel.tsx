@@ -37,38 +37,41 @@ export default function AnnouncementPanel({ list, onDelete }: AnnouncementPanelP
       <div ref={sentinelRef} className="h-0 w-full" aria-hidden />
       <section
         className={cn(
-          'sticky z-20 mb-3 overflow-hidden rounded-[20px] bg-white shadow-[0_1px_0_rgba(60,60,67,0.06)] transition-shadow duration-200',
+          'sticky z-20 mb-3 overflow-hidden rounded-[20px] bg-white shadow-[0_1px_0_rgba(60,60,67,0.06)]',
           isSticky && 'shadow-[0_2px_12px_rgba(0,0,0,0.08)]'
         )}
         style={{ top: 'var(--space-12, 12px)' }}
         aria-label="公告"
       >
         {/* 点击整行展开/收起 */}
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => setExpanded((e) => !e)}
-          className="flex w-full items-center gap-2 px-4 py-3 text-left active:opacity-90"
+          className="flex h-auto min-h-0 w-full items-center justify-between gap-2 px-4 py-2 text-left"
           aria-expanded={expanded}
           aria-label={expanded ? '收起公告' : '展开公告'}
         >
-          <Megaphone className="h-4 w-4 shrink-0 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
-          <span className="text-[13px] font-semibold text-[var(--on-surface-muted)]">公告</span>
-          <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--on-surface-muted)]">
-            {list.length}
+          <span className="flex items-center gap-2">
+            <Megaphone className="h-4 w-4 shrink-0 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
+            <span className="text-[13px] font-semibold text-[var(--on-surface-muted)]">公告</span>
+            <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--on-surface-muted)]">
+              {list.length}
+            </span>
           </span>
           <ChevronDown
             className={cn(
-              'ml-auto h-4 w-4 shrink-0 text-[var(--on-surface-muted)] transition-transform duration-200',
+              'h-4 w-4 shrink-0 text-[var(--on-surface-muted)]',
               expanded && 'rotate-180'
             )}
             strokeWidth={1.5}
           />
-        </button>
+        </Button>
 
         {/* 展开时显示列表 */}
         <div
           className={cn(
-            'grid transition-[grid-template-rows] duration-200 ease-out',
+            'grid',
             expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
           )}
         >

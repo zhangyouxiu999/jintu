@@ -1,18 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import TemplateList from '@/components/TemplateList'
 import { downloadTemplate } from '@/lib/excelTemplates'
 import type { TemplateMeta } from '@/lib/excelTemplates'
 import { showToast } from '@/lib/toast'
-import { animateStagger } from '@/lib/gsap'
 
 export default function Templates() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const revert = animateStagger(listRef.current, ':scope > li')
-    return revert
-  }, [])
 
   const handleDownload = async (meta: TemplateMeta) => {
     setDownloadingId(meta.id)

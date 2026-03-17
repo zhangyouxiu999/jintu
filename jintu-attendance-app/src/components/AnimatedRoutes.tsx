@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState, lazy, Suspense } from 'react'
-import { useLocation, useNavigationType, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { useEffect, useState, lazy, Suspense } from 'react'
+import { useLocation, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { storage } from '@/store/storage'
-import { runPageOut, pageIn, pageInFromLeft, pageInOpacityOnly, pageOut, pageOutToRight } from '@/lib/gsap'
-import gsap from 'gsap'
 import AppLayout from './AppLayout'
 
 const AttendanceEntry = lazy(() => import('@/pages/AttendanceEntry'))
@@ -23,24 +21,12 @@ function RequireAuth() {
   return <Outlet />
 }
 
-const TAB_PREFIXES = ['/attendance', '/grades', '/schedule']
-
-function isTabRoute(pathname: string) {
-  return pathname === '/' || TAB_PREFIXES.some((p) => pathname.startsWith(p))
-}
-
 /**
- * 路由切换由 GSAP 驱动：先执行当前页离开动画，再渲染新页面并执行进入动画。
- * Tab 级别的切换（点名/成绩/课表）跳过滑动动画，保持 iOS 风格瞬切。
+ * 路由切换无动画，直接渲染当前 location 对应页面。
  */
 export default function AnimatedRoutes() {
   const location = useLocation()
-  const navigationType = useNavigationType()
   const [displayLocation, setDisplayLocation] = useState(location)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const isFirstRender = useRef(true)
-  const isBackRef = useRef(false)
-  const skipAnimRef = useRef(false)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -59,63 +45,13 @@ export default function AnimatedRoutes() {
   }, [])
 
   useEffect(() => {
-    const same =
-      location.pathname === displayLocation.pathname &&
-      location.search === displayLocation.search &&
-      location.key === displayLocation.key
-    if (same) return
+    setDisplayLocation(location)
+  }, [location])
 
-    const bothTabs = isTabRoute(location.pathname) && isTabRoute(displayLocation.pathname)
-    skipAnimRef.current = bothTabs
-
-    if (bothTabs) {
-      setDisplayLocation(location)
-      return
-    }
-
-    const isBack = navigationType === 'POP'
-    isBackRef.current = isBack
-    const el = containerRef.current
-    const outVars = isBack ? pageOutToRight.to : pageOut.to
-    runPageOut(el, outVars).then(() => {
-      setDisplayLocation(location)
-    })
-  }, [location, navigationType, displayLocation.key, displayLocation.pathname, displayLocation.search])
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    const isTab = isTabRoute(displayLocation.pathname)
-
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      const enter = isTab ? pageInOpacityOnly : pageIn
-      gsap.fromTo(el, enter.from, { ...enter.to, delay: 0.05 })
-      return
-    }
-
-    if (skipAnimRef.current) {
-      gsap.set(el, { opacity: 1, clearProps: 'transform' })
-      return
-    }
-
-    const isBack = isBackRef.current
-    const enter = isTab
-      ? pageInOpacityOnly
-      : isBack
-        ? pageInFromLeft
-        : pageIn
-    // 返回后进入时先复位 transform，避免上一页的 x 偏移导致新内容在右侧淡入再跳回左侧的卡顿
-    if (isTab) gsap.set(el, { x: 0 })
-    gsap.fromTo(el, enter.from, enter.to)
-  }, [displayLocation.key, displayLocation.pathname, displayLocation.search])
-
-  // 使用 overflow-x-clip 而非 overflow-x-hidden，避免祖先成为 scroll container 导致内层 sticky 吸顶失效
   return (
     <div className="relative min-h-[100vh] w-full overflow-x-clip bg-[var(--bg)]">
       <Suspense fallback={<div className="min-h-[100vh] w-full bg-[var(--bg)]" aria-busy="true" />}>
-        <div ref={containerRef} className="min-h-[100vh] w-full" data-animated-container>
+        <div className="min-h-[100vh] w-full" data-animated-container>
           <Routes location={displayLocation}>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>

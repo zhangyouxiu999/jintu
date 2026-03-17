@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, memo, type CSSProperties } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import gsap from 'gsap'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -50,19 +49,8 @@ function SortableStudentRow({
     setInputValue(index.toString())
   }, [index])
 
-  // 状态变化时：行轻微弹动反馈
   useEffect(() => {
-    const prev = prevStatusRef.current
     prevStatusRef.current = student.attendanceStatus
-    if (prev === null) return
-    if (prev === student.attendanceStatus) return
-    const el = rowRef.current
-    if (!el) return
-    gsap.fromTo(
-      el,
-      { scaleX: 1.015 },
-      { scaleX: 1, duration: 0.28, ease: 'power2.out', overwrite: true }
-    )
   }, [student.attendanceStatus])
 
   const handleIndexBlur = () => {
@@ -117,7 +105,7 @@ function SortableStudentRow({
     >
       {/* 左侧状态指示条 */}
       <div
-        className="absolute left-0 top-0 h-full w-[3px] transition-[background-color] duration-200"
+        className="absolute left-0 top-0 h-full w-[3px]"
         style={{ backgroundColor: getIndicatorColor() }}
       />
 
@@ -164,22 +152,26 @@ function SortableStudentRow({
       {showEdit ? (
         // 编辑模式：编辑 + 删除
         <div className="flex shrink-0 items-center gap-1 pr-3">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => onEdit(student.id, student.name)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--on-surface-muted)] transition-all duration-75 active:scale-[0.88] active:bg-[var(--surface-2)]"
+            className="h-9 w-9 rounded-full text-[var(--on-surface-muted)]"
             aria-label="编辑"
           >
             <Pencil className="h-[16px] w-[16px]" strokeWidth={1.5} />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => onDelete(student.id)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--error)] transition-all duration-75 active:scale-[0.88] active:bg-[var(--error-container)]"
+            className="h-9 w-9 rounded-full text-[var(--error)] active:bg-[var(--error-container)]"
             aria-label="删除"
           >
             <Trash2 className="h-[16px] w-[16px]" strokeWidth={1.5} />
-          </button>
+          </Button>
         </div>
       ) : (
         // 点名模式：4 个状态按钮横排

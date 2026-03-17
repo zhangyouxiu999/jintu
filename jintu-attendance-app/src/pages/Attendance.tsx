@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate, useNavigationType } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   DndContext,
   pointerWithin,
@@ -36,13 +36,11 @@ import { useStudentImport } from '@/hooks/useStudentImport'
 import type { AttendanceStatus, AttendanceStatusMap } from '@/types'
 import { today } from '@/lib/date'
 import { PERIOD_NAMES, getCurrentResetSlot, getResetSlotLabel } from '@/lib/period'
-import { getReportDateLabel } from '@/lib/reportText'
 import { showToast } from '@/lib/toast'
 import { storage } from '@/store/storage'
 import { shareOrDownloadFile } from '@/lib/shareOrDownload'
 import { buildStudentListWorkbook } from '@/lib/exportClassExcel'
 import { cn } from '@/lib/utils'
-import { animateStagger } from '@/lib/gsap'
 import { useAppLayout } from '@/components/AppLayout'
 import SortableStudentRow from '@/components/SortableStudentRow'
 import { Button } from '@/components/ui/button'
@@ -67,8 +65,6 @@ import {
 
 export default function Attendance() {
   const { classId } = useParams<{ classId: string }>()
-  const navigate = useNavigate()
-  const navigationType = useNavigationType()
   const {
     classEntity,
     students,
@@ -114,14 +110,6 @@ export default function Attendance() {
   useEffect(() => {
     import('@capacitor/core').then(({ Capacitor }) => setIsAndroid(Capacitor.getPlatform() === 'android')).catch(() => {})
   }, [])
-
-  // 仅在前进进入时做列表错落动画，从历史返回时跳过，避免抖动
-  useEffect(() => {
-    if (loading || students.length === 0) return
-    if (navigationType === 'POP') return
-    const revert = animateStagger(studentListRef.current, ':scope > div')
-    return revert
-  }, [loading, students.length, navigationType])
 
   const period = getCurrentPeriodId()
 
@@ -173,7 +161,7 @@ export default function Attendance() {
     }
   }, [addOpen])
 
-  // 按固定时间点（8:00 / 14:00 / 19:00）判断是否进入新时段；进入则按设置决定是否自动重置考勤
+  // 按固定时间点（0 点、12:00、18:00）判断是否进入新时段；进入则按设置决定是否自动重置考勤
   useEffect(() => {
     if (!classId || students.length === 0) return
     const dateStr = today()
@@ -186,18 +174,54 @@ export default function Attendance() {
     const autoReset = storage.loadAutoResetAttendance()
     if (autoReset) {
       const next = students.reduce<AttendanceStatusMap>((acc, s) => ({ ...acc, [s.id]: 0 }), {})
-      saveAllStatus(next).then(() => {
-        setAllAttendanceStatus(next)
-        showToast(`已进入${label}时段（${currentSlot}），考勤已重置`, { duration: 3500 })
-      }).catch(() => {
-        showToast('自动重置失败，请手动重置', { variant: 'error', duration: 2500 })
-      })
+      saveAllStatus(next)
+        .then(() => {
+          setAllAttendanceStatus(next)
+          showToast(`已进入${label}时段，考勤已重置`, { duration: 3500 })
+          // 从 store 再拉一次，保证名单与持久化一致、不丢人
+          return refresh(true)
+        })
+        .catch(() => {
+          showToast('自动重置失败，请手动重置', { variant: 'error', duration: 2500 })
+        })
     } else if (typeof document !== 'undefined') {
       const cleanupRef = { current: undefined as (() => void) | undefined }
-      cleanupRef.current = showToast(`已进入${label}时段（${currentSlot}）`, { duration: 2500 })
+      cleanupRef.current = showToast(`已进入${label}时段`, { duration: 2500 })
       return () => cleanupRef.current?.()
     }
-  }, [classId, students.length, saveAllStatus, setAllAttendanceStatus])
+  }, [classId, students.length, saveAllStatus, setAllAttendanceStatus, refresh])
+
+  // 页面重新可见或应用从后台恢复时，从 store 刷新点名数据，避免退出再进来不准确
+  const appListenerRef = useRef<{ remove: () => Promise<void> } | null>(null)
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    isMountedRef.current = true
+    if (!classId) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    import('@capacitor/core')
+      .then(({ Capacitor }) => {
+        if (!Capacitor.isNativePlatform()) return
+        return import('@capacitor/app').then(({ App }) =>
+          App.addListener('appStateChange', ({ isActive }) => {
+            if (isActive) refresh(true)
+          })
+        )
+      })
+      .then((handle) => {
+        if (handle && isMountedRef.current) appListenerRef.current = handle
+        else handle?.remove?.()
+      })
+      .catch(() => {})
+    return () => {
+      isMountedRef.current = false
+      document.removeEventListener('visibilitychange', onVisible)
+      appListenerRef.current?.remove()
+      appListenerRef.current = null
+    }
+  }, [classId, refresh])
 
   const handleStatus = useCallback(
     (studentId: string, status: AttendanceStatus) => {
@@ -316,23 +340,24 @@ export default function Attendance() {
         icon: List,
         onSelect: handleExportStudentList,
       },
-        extraActions: [
-          { id: 'attendance-add', label: '添加学生', icon: UserPlus, onSelect: () => setAddChoiceOpen(true) },
-          { id: 'attendance-edit', label: showEditStudent ? '完成修改' : '修改学生', icon: Pencil, onSelect: () => setShowEditStudent((v) => !v) },
-          { id: 'attendance-announcement', label: '添加公告', icon: Megaphone, onSelect: () => setAddAnnouncementOpen(true) },
-          { id: 'attendance-all-present', label: '一键全勤', icon: CheckCircle, onSelect: handleMarkAllPresent },
-          { id: 'attendance-reset', label: '重置考勤', icon: RefreshCw, onSelect: () => setResetDialogOpen(true) },
-          { id: 'attendance-report', label: '生成考勤报告', icon: FileText, onSelect: () => setReportOpen(true) },
-        ],
+      extraActions: [
+        { id: 'attendance-add', label: '添加学生', icon: UserPlus, onSelect: () => setAddChoiceOpen(true) },
+        { id: 'attendance-edit', label: showEditStudent ? '完成修改' : '修改学生', icon: Pencil, onSelect: () => setShowEditStudent((v) => !v) },
+        { id: 'attendance-announcement', label: '添加公告', icon: Megaphone, onSelect: () => setAddAnnouncementOpen(true) },
+        { id: 'attendance-all-present', label: '一键全勤', icon: CheckCircle, onSelect: handleMarkAllPresent },
+        { id: 'attendance-reset', label: '重置考勤', icon: RefreshCw, onSelect: () => setResetDialogOpen(true) },
+        { id: 'attendance-report', label: '生成考勤报告', icon: FileText, onSelect: () => setReportOpen(true) },
+      ],
     })
     return () => setPageActions({})
-  }, [classId, loading, setPageActions, handleMarkAllPresent, handleExportStudentList, showEditStudent, navigate])
+  }, [classId, loading, setPageActions, handleMarkAllPresent, handleExportStudentList, showEditStudent])
 
   const handleReset = async () => {
     const next = students.reduce<AttendanceStatusMap>((acc, s) => ({ ...acc, [s.id]: 0 }), {})
     await saveAllStatus(next)
     setAllAttendanceStatus(next)
     setResetDialogOpen(false)
+    await refresh(true)
   }
 
   const handlePublishAnnouncement = async () => {
@@ -591,14 +616,16 @@ export default function Attendance() {
                   className="h-8 min-h-0 flex-1 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] text-[14px] placeholder:text-[var(--on-surface-muted)] focus-visible:ring-1 focus-visible:ring-[var(--primary)]/30"
                 />
                 {announcementRows.length > 1 ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => removeAnnouncementRow(index)}
                     aria-label="删除本条"
-                    className="h-8 w-8 shrink-0 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--on-surface-muted)] transition-colors"
+                    className="h-8 w-8 shrink-0 rounded-[var(--radius-sm)] text-[var(--on-surface-muted)]"
                   >
                     <X className="h-5 w-5" strokeWidth={1.5} />
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             ))}
@@ -616,18 +643,20 @@ export default function Attendance() {
           {/* 有效期 */}
           <div className="shrink-0 flex overflow-hidden rounded-[var(--radius-sm)] bg-[var(--surface-2)] p-1">
             {(['today', 'permanent'] as const).map((t) => (
-              <button
+              <Button
                 key={t}
                 type="button"
+                variant="ghost"
                 onClick={() => setAnnouncementExpiry(t)}
-                className={`flex-1 rounded-[9px] py-1.5 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-100 ease-out ${
+                className={cn(
+                  'flex-1 rounded-[9px] py-1.5 text-[11px] font-semibold',
                   announcementExpiry === t
                     ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-[0_1px_4px_rgba(0,0,0,0.08)]'
                     : 'text-[var(--on-surface-muted)]'
-                }`}
+                )}
               >
                 {t === 'today' ? '今日有效' : '永久'}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="mt-4 flex shrink-0 justify-end gap-2">
@@ -662,7 +691,7 @@ export default function Attendance() {
       {/* 统计卡片 + 列表：列表区域默认撑满一屏 */}
       <div className="flex min-h-0 flex-1 flex-col">
       <div
-        className="sticky z-20 mb-2 shrink-0 overflow-visible transition-shadow duration-200"
+        className="sticky z-20 mb-2 shrink-0 overflow-visible"
         style={{ top: 'var(--space-12, 12px)' }}
       >
         {/* 头部行：时段 + 统计 + 公告按钮（收起时用透明 border-b 占位，避免展开/收起时高度变化导致列表位移） */}
@@ -679,11 +708,12 @@ export default function Attendance() {
             <>
               <span className="h-3 w-px shrink-0 bg-[var(--outline-variant)]" aria-hidden />
               <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setStatusFilter(null)}
                   className={cn(
-                    'flex shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5 transition-colors active:opacity-80',
+                    'h-auto shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5',
                     statusFilter === null && 'bg-[var(--surface-2)]'
                   )}
                   aria-pressed={statusFilter === null}
@@ -691,12 +721,13 @@ export default function Attendance() {
                 >
                   <span className="tabular-nums text-[13px] font-semibold text-[var(--on-surface)]">{students.length}</span>
                   <span className="text-[12px] font-medium uppercase tracking-wide text-[var(--on-surface-muted)]">应到</span>
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setStatusFilter(statusFilter === 1 ? null : 1)}
                   className={cn(
-                    'flex shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5 transition-colors active:opacity-80',
+                    'h-auto shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5',
                     statusFilter === 1 && 'bg-[var(--success-container)]'
                   )}
                   aria-pressed={statusFilter === 1}
@@ -704,12 +735,13 @@ export default function Attendance() {
                 >
                   <span className="tabular-nums text-[13px] font-semibold text-[var(--success)]">{presentCount}</span>
                   <span className="text-[12px] font-medium uppercase tracking-wide text-[var(--success)]/70">实到</span>
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setStatusFilter(statusFilter === 0 ? null : 0)}
                   className={cn(
-                    'flex shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5 transition-colors active:opacity-80',
+                    'h-auto shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5',
                     statusFilter === 0 && 'bg-[var(--error-container)]'
                   )}
                   aria-pressed={statusFilter === 0}
@@ -717,12 +749,13 @@ export default function Attendance() {
                 >
                   <span className="tabular-nums text-[13px] font-semibold text-[var(--error)]">{absentCount}</span>
                   <span className="text-[12px] font-medium uppercase tracking-wide text-[var(--error)]/70">未到</span>
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setStatusFilter(statusFilter === 2 ? null : 2)}
                   className={cn(
-                    'flex shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5 transition-colors active:opacity-80',
+                    'h-auto shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5',
                     statusFilter === 2 && 'bg-[var(--leave-container)]'
                   )}
                   aria-pressed={statusFilter === 2}
@@ -730,12 +763,13 @@ export default function Attendance() {
                 >
                   <span className="tabular-nums text-[13px] font-semibold text-[var(--leave)]">{leaveCount}</span>
                   <span className="text-[12px] font-medium uppercase tracking-wide text-[var(--leave)]/70">请假</span>
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setStatusFilter(statusFilter === 3 ? null : 3)}
                   className={cn(
-                    'flex shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5 transition-colors active:opacity-80',
+                    'h-auto shrink-0 items-baseline gap-1 rounded-full px-1.5 py-0.5',
                     statusFilter === 3 && 'bg-[var(--late-container)]'
                   )}
                   aria-pressed={statusFilter === 3}
@@ -743,25 +777,27 @@ export default function Attendance() {
                 >
                   <span className="tabular-nums text-[13px] font-semibold text-[var(--late)]">{lateCount}</span>
                   <span className="text-[12px] font-medium uppercase tracking-wide text-[var(--late)]/70">晚到</span>
-                </button>
+                </Button>
               </div>
             </>
           )}
           <div className="flex shrink-0 items-center gap-1.5">
             {showEditStudent && (
-              <button
+              <Button
                 type="button"
+                variant="link"
                 onClick={() => { setShowEditStudent(false); showToast('已保存', { variant: 'success', duration: 1800 }) }}
-                className="text-[13px] font-semibold text-[var(--primary)] active:opacity-60"
+                className="text-[13px] font-semibold text-[var(--primary)]"
               >
                 完成
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => setAnnouncementExpanded((e) => !e)}
               className={cn(
-                'flex items-center gap-1 rounded-full py-1.5 pl-2.5 pr-2 text-[12px] font-semibold active:opacity-70',
+                'h-auto min-h-0 flex items-center gap-1 rounded-full py-1.5 pl-2.5 pr-2 text-[12px] font-semibold',
                 announcementExpanded ? 'bg-[var(--surface-2)] text-[var(--on-surface)]' : 'bg-[var(--surface-2)] text-[var(--on-surface-variant)]'
               )}
               aria-expanded={announcementExpanded}
@@ -774,19 +810,19 @@ export default function Attendance() {
               </span>
               <ChevronDown
                 className={cn(
-                  'h-3 w-3 shrink-0 text-[var(--on-surface-muted)] transition-transform duration-200',
+                  'h-3 w-3 shrink-0 text-[var(--on-surface-muted)]',
                   announcementExpanded && 'rotate-180'
                 )}
                 strokeWidth={2}
               />
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* 公告内容区：浮层展示，展开/收起动画，不占文档流 */}
         <div
           className={cn(
-            'absolute left-0 right-0 top-full z-10 overflow-hidden rounded-b-[16px] border-x border-b border-[var(--outline-variant)] bg-[var(--surface)] shadow-[0_1px_0_rgba(60,60,67,0.06),0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out',
+            'absolute left-0 right-0 top-full z-10 overflow-hidden rounded-b-[16px] border-x border-b border-[var(--outline-variant)] bg-[var(--surface)] shadow-[0_1px_0_rgba(60,60,67,0.06),0_4px_12px_rgba(0,0,0,0.08)]',
             announcementExpanded
               ? 'max-h-[300px] opacity-100'
               : 'max-h-0 opacity-0 pointer-events-none'
@@ -842,7 +878,7 @@ export default function Attendance() {
             <Users className="h-8 w-8" strokeWidth={1.5} />
           </div>
           <Button
-            className="mt-6 h-9 rounded-[var(--radius-md)] px-4 text-[13px] font-medium active:scale-[0.96] active:opacity-90"
+            className="mt-6 h-9 rounded-[var(--radius-md)] px-4 text-[13px] font-medium"
             onClick={() => setAddChoiceOpen(true)}
           >
             <UserPlus className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
@@ -874,7 +910,7 @@ export default function Attendance() {
                     onDelete={handleDeleteStudent}
                   />
                 ))}
-                {twoColumns && (
+                {(twoColumns || threeColumns) && (
                   <>
                     <div className="flex items-center gap-2 px-5 py-2">
                       <div className="h-2.5 w-0.5 shrink-0 rounded-full bg-[var(--outline)]" />
