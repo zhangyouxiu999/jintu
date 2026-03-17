@@ -1,0 +1,25 @@
+---
+description: Capacitor 6 移动端原生能力与平台兼容规范
+globs: "{src/**/*.{ts,tsx},capacitor.config.ts,android/**,ios/**}"
+alwaysApply: false
+---
+
+# Capacitor Skill
+
+- 面向文件系统、剪贴板、分享、生命周期、原生返回键等能力时，优先使用 Capacitor 官方插件，不直接假设 Web API 足够。
+- 新增原生能力前，先确认当前项目是否已安装对应插件；若未安装，说明依赖、同步和平台影响。
+- 任何依赖原生能力的实现都要考虑 Web 回退、权限申请、失败提示和不可用场景。
+- 涉及 Android / iOS 目录、`capacitor.config.ts`、资源路径或包名时，避免无依据修改已有构建约定。
+- 修改会影响原生工程的内容后，默认假设需要 `npm run cap:sync`，并避免引入只在单端可用的路径或行为。
+- 文件导出、下载、分享流程优先按“生成文件 -> 保存到可控位置 -> 调用分享或打开”设计，不直接依赖浏览器下载行为。
+- 移动端交互优先考虑安全区、返回行为、键盘遮挡、滚动容器和触控反馈。
+- 性能敏感页面避免高频重排、超大列表无优化渲染和无节制动画。
+
+```typescript
+// preferred
+import { Clipboard } from "@capacitor/clipboard";
+import { Share } from "@capacitor/share";
+
+await Clipboard.write({ string: text });
+await Share.share({ title: "导出结果", text, url });
+```

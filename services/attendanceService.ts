@@ -135,7 +135,10 @@ export class AttendanceService {
 
       const log = await AttendanceLog.findOneAndUpdate(
         { class_code: classCode, student_id, date, period },
-        { status, updated_at: new Date() },
+        {
+          $set: { status, updated_at: new Date() },
+          $setOnInsert: { class_code: classCode, student_id, date, period },
+        },
         { upsert: true, new: true }
       );
 
@@ -152,7 +155,15 @@ export class AttendanceService {
       const operations = student_ids.map((sId: string) => ({
         updateOne: {
           filter: { class_code: classCode, student_id: sId, date, period },
-          update: { status, updated_at: new Date() },
+          update: {
+            $set: { status, updated_at: new Date() },
+            $setOnInsert: {
+              class_code: classCode,
+              student_id: sId,
+              date,
+              period,
+            },
+          },
           upsert: true,
         },
       }));
@@ -169,4 +180,3 @@ export class AttendanceService {
     throw new Error("Invalid action");
   }
 }
-

@@ -4,9 +4,9 @@ import { type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 
-/** Alert 内容区：padding 24px，区块 gap 16px；与 Dialog 一致 */
+/** Alert 内容区：padding 20px，区块 gap 12px，与 Dialog 统一 */
 const alertDialogContentBase =
-  'fixed z-50 flex flex-col gap-4 left-1/2 right-auto top-1/2 bottom-auto w-[min(calc(100vw-2rem),28rem)] max-w-md max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-6 shadow-[0_8px_40px_rgba(0,0,0,0.12)] opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100'
+  'fixed z-[110] flex flex-col gap-3 left-1/2 right-auto top-1/2 bottom-auto w-[min(calc(100vw-2rem),28rem)] max-w-md max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-5 text-[14px] shadow-[0_8px_40px_rgba(0,0,0,0.12)] opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100'
 
 function AlertDialog(props: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
@@ -24,7 +24,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        'fixed inset-0 z-50 bg-black/45 opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100',
+        'fixed inset-0 z-[110] bg-black/45 opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100',
         className
       )}
       {...props}
@@ -107,7 +107,7 @@ function AlertDialogAction({
     <AlertDialogPrimitive.Action
       data-slot="button"
       data-variant={variant}
-      className={cn(buttonVariants({ variant, size: 'sm' }), className)}
+      className={cn(buttonVariants({ variant, size: 'sm' }), 'h-8 min-h-0 px-2.5 text-[11px]', className)}
       {...props}
     />
   )
@@ -121,7 +121,7 @@ function AlertDialogCancel({
     <AlertDialogPrimitive.Cancel
       data-slot="button"
       data-variant="outline"
-      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), className)}
+      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-8 min-h-0 px-2.5 text-[11px]', className)}
       {...props}
     />
   )

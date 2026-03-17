@@ -62,7 +62,15 @@ export async function POST(
               date: date,
               period: periodId,
             },
-            { status: res.recognizedStatus },
+            {
+              $set: { status: res.recognizedStatus, updated_at: new Date() },
+              $setOnInsert: {
+                class_code: code,
+                student_id: studentIdStr,
+                date: date,
+                period: periodId,
+              },
+            },
             { upsert: true }
           );
         }

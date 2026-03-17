@@ -106,6 +106,8 @@ export default function AnimatedRoutes() {
       : isBack
         ? pageInFromLeft
         : pageIn
+    // 返回后进入时先复位 transform，避免上一页的 x 偏移导致新内容在右侧淡入再跳回左侧的卡顿
+    if (isTab) gsap.set(el, { x: 0 })
     gsap.fromTo(el, enter.from, enter.to)
   }, [displayLocation.key, displayLocation.pathname, displayLocation.search])
 

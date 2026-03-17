@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { storage } from '@/store/storage'
 import * as attendanceStore from '@/store/attendance'
 import * as studentsStore from '@/store/students'
-import { Plus, School, MoreHorizontal, Edit2, Trash2, Download, Settings as SettingsIcon, Calendar, Award, History as HistoryIcon, ChevronLeft } from 'lucide-react'
+import { Plus, School, MoreHorizontal, Edit2, Trash2, Download, Calendar, Award, History as HistoryIcon } from 'lucide-react'
 import { useClassList } from '@/hooks/useClassList'
 import type { ClassEntity } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { pageHeaderShellClassName } from '@/components/PageHeader'
 import { animateStagger } from '@/lib/gsap'
 import { getAppName } from '@/lib/appConfig'
 
@@ -163,60 +162,35 @@ export default function ClassList() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <header className={`${pageHeaderShellClassName} flex items-center justify-between px-4 py-2`}>
-        {isStandaloneClassList ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-variant)] active:scale-95 active:bg-[var(--surface-hover)]"
-            onClick={() => navigate('/settings')}
-            aria-label="返回"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        ) : (
-          <div className="w-10 shrink-0" aria-hidden />
-        )}
-        <div className="flex min-w-0 flex-1 justify-center">
-          {editingTitle ? (
-            <Input
-              ref={titleInputRef}
-              className="text-title h-9 max-w-[180px] border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)]"
-              value={appTitle}
-              onChange={(e) => setAppTitle(e.target.value)}
-              onBlur={() => saveAppTitle(appTitle)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveAppTitle(appTitle)
-              }}
-            />
-          ) : (
-            <h1
-              className="flex cursor-pointer flex-col items-center gap-1.5 font-bold tracking-tight text-[var(--on-surface)] transition-opacity duration-150 hover:opacity-80"
-              onClick={() => setEditingTitle(true)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setEditingTitle(true) }}
-              aria-label={`标题：${appTitle}，点击修改`}
-            >
-              <span className="rounded-full bg-[var(--primary-container)] px-4 py-1.5 text-[15px] text-[var(--primary)]">{appTitle}</span>
-              <span className="h-0.5 w-8 rounded-full bg-[var(--primary)]/40" aria-hidden />
-            </h1>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          type="button"
-          className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-variant)] active:scale-95 active:bg-[var(--surface-hover)]"
-          onClick={() => navigate('/settings')}
-          aria-label="设置"
-        >
-          <SettingsIcon className="h-5 w-5" />
-        </Button>
-      </header>
-
       <main className="px-4 py-4">
+        {isStandaloneClassList && (
+          <div className="mb-4 flex justify-center">
+            {editingTitle ? (
+              <Input
+                ref={titleInputRef}
+                className="text-title h-9 max-w-[180px] border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)]"
+                value={appTitle}
+                onChange={(e) => setAppTitle(e.target.value)}
+                onBlur={() => saveAppTitle(appTitle)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveAppTitle(appTitle)
+                }}
+              />
+            ) : (
+              <h1
+                className="flex cursor-pointer flex-col items-center gap-1.5 font-bold tracking-tight text-[var(--on-surface)] transition-opacity duration-150"
+                onClick={() => setEditingTitle(true)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setEditingTitle(true) }}
+                aria-label={`标题：${appTitle}，点击修改`}
+              >
+                <span className="rounded-full bg-[var(--primary-container)] px-4 py-1.5 text-[15px] text-[var(--primary)]">{appTitle}</span>
+                <span className="h-0.5 w-8 rounded-full bg-[var(--primary)]/40" aria-hidden />
+              </h1>
+            )}
+          </div>
+        )}
         {loading ? (
           <div className="flex min-h-[200px] items-center justify-center py-12" aria-busy="true" />
         ) : list.length === 0 ? (
@@ -326,30 +300,30 @@ export default function ClassList() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
+          <DialogHeader className="text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">新增班级</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">填写班级名称</DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+          <div className="py-1">
             <Input
               placeholder="班级名称"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               autoFocus
-              className="h-[var(--touch-target)] rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] text-body"
+              className="h-8 min-h-0 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] text-[14px]"
             />
           </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)}>取消</Button>
-            <Button size="sm" onClick={handleAdd} disabled={!name.trim() || submitting}>{submitting ? '…' : '确定'}</Button>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
+            <Button size="sm" onClick={handleAdd} disabled={!name.trim() || submitting} className="h-8 min-h-0 px-2.5 text-[11px]">{submitting ? '…' : '确定'}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!exportConfirmClass} onOpenChange={(open) => { if (!open) setExportConfirmClass(null) }}>
         <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
+          <DialogHeader className="text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)]">确认导出</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
               {exportConfirmClass && (
@@ -357,15 +331,16 @@ export default function ClassList() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setExportConfirmClass(null)}>取消</Button>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setExportConfirmClass(null)} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
             <Button
-              size="default"
+              size="sm"
               onClick={async () => {
                 if (!exportConfirmClass) return
                 setExportConfirmClass(null)
                 await handleExportClass(exportConfirmClass)
               }}
+              className="h-8 min-h-0 px-2.5 text-[11px]"
             >
               确认导出
             </Button>
@@ -375,23 +350,23 @@ export default function ClassList() {
 
       <Dialog open={!!editingClass} onOpenChange={(open) => { if (!open) { setEditingClass(null); setName('') } }}>
         <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
+          <DialogHeader className="text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">编辑班级</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">修改班级名称</DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+          <div className="py-1">
             <Input
               placeholder="班级名称"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
               autoFocus
-              className="h-[var(--touch-target)] rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] text-body"
+              className="h-8 min-h-0 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] text-[14px]"
             />
           </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setEditingClass(null); setName('') }}>取消</Button>
-            <Button size="sm" onClick={handleSaveEdit} disabled={!name.trim() || submitting}>{submitting ? '…' : '保存'}</Button>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setEditingClass(null); setName('') }} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={!name.trim() || submitting} className="h-8 min-h-0 px-2.5 text-[11px]">{submitting ? '…' : '保存'}</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -1,18 +1,24 @@
-import { BookOpen, ClipboardCheck, FileDown, FileUp, GraduationCap, Plus, UserCircle2, type LucideIcon } from 'lucide-react'
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { BookOpen, Check, ClipboardCheck, FileDown, FileUp, GraduationCap, LayoutGrid, UserCircle2, type LucideIcon } from 'lucide-react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { type GlobalActionConfig } from '@/components/GlobalActionDrawer'
 import { useClassList } from '@/hooks/useClassList'
 import { cn } from '@/lib/utils'
 import { storage } from '@/store/storage'
+import { BottomSheet, BottomSheetContent } from '@/components/ui/bottom-sheet'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+
+const Settings = lazy(() => import('@/pages/Settings'))
 
 export interface AppLayoutContextValue {
   pageTitle: string
@@ -28,6 +34,21 @@ export function useAppLayout() {
   const context = useContext(AppLayoutContext)
   if (!context) {
     throw new Error('useAppLayout must be used within AppLayout')
+  }
+  return context
+}
+
+export interface CurrentClassContextValue {
+  currentClassId: string | null
+  setCurrentClassId: (id: string | null) => void
+}
+
+const CurrentClassContext = createContext<CurrentClassContextValue | null>(null)
+
+export function useCurrentClassId() {
+  const context = useContext(CurrentClassContext)
+  if (!context) {
+    throw new Error('useCurrentClassId must be used within AppLayout')
   }
   return context
 }
@@ -90,11 +111,19 @@ function BottomTab({
 
 export default function AppLayout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { list } = useClassList()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [settingsSheetOpen, setSettingsSheetOpen] = useState(false)
   const [pageTitle, setPageTitle] = useState(getDefaultPageTitle(location.pathname))
   const [pageActions, setPageActions] = useState<GlobalActionConfig>({})
+  const [currentClassId, setCurrentClassIdState] = useState<string | null>(() => storage.loadCurrentClassId())
+
+  const setCurrentClassId = useCallback((id: string | null) => {
+    storage.saveCurrentClassId(id)
+    setCurrentClassIdState(id)
+  }, [])
 
   // 将 header 实际高度写入 CSS 变量，供吸顶子元素使用
   const headerRef = useRef<HTMLElement>(null)
@@ -116,9 +145,40 @@ export default function AppLayout() {
     setPageActions({})
   }, [location.pathname])
 
-  const storedId = storage.loadCurrentClassId()
-  const currentClassId = list.find((item) => item.id === storedId)?.id ?? list[0]?.id ?? null
-  const currentClass = list.find((item) => item.id === currentClassId) ?? null
+  // 仅当 pathname 发生变化（用户从抽屉内跳转）且新页面不是 /settings 时关闭抽屉；切换班级（同一 tab 下仅 classId 变化）时不关闭
+  const prevPathnameRef = useRef(location.pathname)
+  useEffect(() => {
+    const prev = prevPathnameRef.current
+    const curr = location.pathname
+    if (prev === curr) return
+    prevPathnameRef.current = curr
+    if (!settingsSheetOpen || curr === '/settings') return
+    const prevBase = prev.replace(/\/[^/]+$/, '') || prev
+    const currBase = curr.replace(/\/[^/]+$/, '') || curr
+    const isClassSwitchOnly = prevBase === currBase && (prev.startsWith('/attendance') || prev.startsWith('/grades') || prev.startsWith('/schedule'))
+    if (isClassSwitchOnly) return
+    setSettingsSheetOpen(false)
+  }, [location.pathname, settingsSheetOpen])
+
+  const effectiveClassId = list.find((item) => item.id === currentClassId)?.id ?? list[0]?.id ?? null
+  const currentClass = list.find((item) => item.id === effectiveClassId) ?? null
+
+  // 切换当前班级后，若当前页是某班级的点名/成绩/课表且 URL 的 classId 与新区不一致，则跳转到新班级对应路由，使列表等数据更新
+  const prevEffectiveIdRef = useRef<string | null>(effectiveClassId)
+  useEffect(() => {
+    if (prevEffectiveIdRef.current === effectiveClassId) return
+    prevEffectiveIdRef.current = effectiveClassId
+    const pathname = location.pathname
+    const parts = pathname.split('/').filter(Boolean)
+    const routeType = parts[0]
+    const urlClassId = parts[1] ?? null
+    if (routeType !== 'attendance' && routeType !== 'grades' && routeType !== 'schedule') return
+    if (urlClassId === effectiveClassId) return
+    const targetPath = effectiveClassId
+      ? `/${routeType}/${effectiveClassId}`
+      : (routeType === 'attendance' ? '/' : `/${routeType}`)
+    navigate(targetPath, { replace: true })
+  }, [effectiveClassId, location.pathname, navigate])
 
   const importAction = pageActions.importAction ?? {
     id: 'import-placeholder',
@@ -147,33 +207,51 @@ export default function AppLayout() {
     [pageTitle]
   )
 
+  const currentClassContextValue = useMemo<CurrentClassContextValue>(
+    () => ({ currentClassId, setCurrentClassId }),
+    [currentClassId]
+  )
+
   return (
-    <AppLayoutContext.Provider value={contextValue}>
-      <div className="min-h-[100dvh] bg-[var(--bg)] text-[var(--on-surface)]">
+    <CurrentClassContext.Provider value={currentClassContextValue}>
+      <AppLayoutContext.Provider value={contextValue}>
+      <div className="flex min-h-[100dvh] flex-col bg-[var(--bg)] text-[var(--on-surface)]">
         {/* 顶部导航栏：不吸顶，随页滚动。ResizeObserver 将实际高度写入 --header-height 供公告吸顶时 top 使用 */}
-        <header ref={headerRef} className="z-40">
+        <header ref={headerRef} className="z-40 shrink-0">
           <div className="mx-auto flex w-full max-w-screen-sm items-center justify-between px-5 pb-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
             <h1 className="min-w-0 flex-1 truncate text-[24px] font-bold leading-tight tracking-tight text-[var(--on-surface)]">
               {currentClass?.name ?? '未选择班级'}
             </h1>
 
-            <NavLink
-              to="/settings"
-              className={({ isActive }) => cn(
-                'ml-3 flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full transition-all duration-200 active:opacity-60',
-                isActive ? 'text-[var(--primary)]' : 'text-[var(--on-surface-variant)]'
-              )}
+            <button
+              type="button"
+              onClick={() => setSettingsSheetOpen(true)}
+              className="ml-3 flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full text-[var(--on-surface-variant)] transition-all duration-200 active:opacity-60"
               aria-label="打开我的"
             >
               <UserCircle2 strokeWidth={1.4} className="h-[24px] w-[24px]" />
-            </NavLink>
+            </button>
           </div>
         </header>
 
-        {/* main 底部留白 = dock 高度(约 66px) + safe area + 额外间距 */}
-        <main className="mx-auto w-full max-w-screen-sm px-4 pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-4">
-          <Outlet />
+        {/* main 底部留白 = dock 高度(约 66px) + safe area + 额外间距；flex-1 min-h-0 让内容区撑满一屏 */}
+        <main className="mx-auto flex min-h-0 w-full max-w-screen-sm flex-1 flex-col px-[var(--page-x)] pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-4">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Outlet />
+          </div>
         </main>
+
+        {/* 我的：从下向上的抽屉（createPortal 实现，挂载到 body） */}
+        <BottomSheet open={settingsSheetOpen} onOpenChange={setSettingsSheetOpen}>
+          <BottomSheetContent
+            showCloseButton
+            onClose={() => setSettingsSheetOpen(false)}
+          >
+            <Suspense fallback={<div className="flex min-h-[200px] items-center justify-center text-[var(--on-surface-muted)]">加载中…</div>}>
+              <Settings />
+            </Suspense>
+          </BottomSheetContent>
+        </BottomSheet>
 
         {/* 底部 Dock 通过 Portal 挂到 body，跳出 GSAP 动画容器，避免随页面淡出 */}
         {createPortal(
@@ -187,19 +265,19 @@ export default function AppLayout() {
                 aria-label="主导航"
               >
                 <BottomTab
-                  to={buildTabPath('attendance', currentClassId)}
+                  to={buildTabPath('attendance', effectiveClassId)}
                   label="点名"
                   icon={ClipboardCheck}
                   active={isTabActive(location.pathname, 'attendance')}
                 />
                 <BottomTab
-                  to={buildTabPath('grades', currentClassId)}
+                  to={buildTabPath('grades', effectiveClassId)}
                   label="成绩"
                   icon={GraduationCap}
                   active={isTabActive(location.pathname, 'grades')}
                 />
                 <BottomTab
-                  to={buildTabPath('schedule', currentClassId)}
+                  to={buildTabPath('schedule', effectiveClassId)}
                   label="课表"
                   icon={BookOpen}
                   active={isTabActive(location.pathname, 'schedule')}
@@ -220,10 +298,9 @@ export default function AppLayout() {
                       drawerOpen ? 'text-[var(--primary)]' : 'text-[var(--on-surface-muted)]'
                     )}
                   >
-                    <Plus
+                    <LayoutGrid
                       strokeWidth={drawerOpen ? 2 : 1.5}
-                      className="h-[22px] w-[22px] transition-[stroke-width,transform] duration-200"
-                      style={{ transform: drawerOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}
+                      className="h-[22px] w-[22px] transition-[stroke-width] duration-200"
                     />
                   </button>
                 </DropdownMenuTrigger>
@@ -239,6 +316,47 @@ export default function AppLayout() {
                   {extraActions.length > 0 &&
                     extraActions.map((item) => {
                       const Icon = item.icon
+                      const hasSub = item.children != null && item.children.length > 0
+                      if (hasSub) {
+                        return (
+                          <DropdownMenuSub key={item.id}>
+                            <DropdownMenuSubTrigger
+                              className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-[15px] focus:bg-[var(--surface-2)] data-[state=open]:bg-[var(--surface-2)]"
+                            >
+                              {Icon ? <Icon className="h-5 w-5 shrink-0 text-[var(--on-surface-muted)]" strokeWidth={1.5} /> : null}
+                              <span>{item.label}</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent
+                              className="min-w-[10rem] rounded-[12px] border-[var(--outline)] bg-[var(--surface)] p-1 shadow-elevation-2"
+                              sideOffset={4}
+                            >
+                              {item.children!.map((child) => {
+                                const ChildIcon = child.icon
+                                const isCurrent = child.disabled
+                                return (
+                                  <DropdownMenuItem
+                                    key={child.id}
+                                    disabled={child.disabled}
+                                    variant={child.destructive ? 'destructive' : 'default'}
+                                    onSelect={() => child.onSelect?.()}
+                                    className={cn(
+                                      'flex items-center gap-3 rounded-[9px] px-3 py-2.5 text-[14px] focus:bg-[var(--surface-2)]',
+                                      isCurrent && 'text-[var(--primary)] opacity-100 data-[disabled]:opacity-100'
+                                    )}
+                                  >
+                                    {!isCurrent && ChildIcon ? (
+                                      <ChildIcon className="h-4 w-4 shrink-0 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
+                                    ) : null}
+                                    <span className="shrink-0 text-left">{child.label}</span>
+                                    {isCurrent && <span className="min-w-0 flex-1" aria-hidden />}
+                                    {isCurrent && <Check className="h-4 w-4 shrink-0 text-[var(--primary)]" strokeWidth={2.5} />}
+                                  </DropdownMenuItem>
+                                )
+                              })}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        )
+                      }
                       return (
                         <DropdownMenuItem
                           key={item.id}
@@ -298,6 +416,7 @@ export default function AppLayout() {
         )}
 
       </div>
-    </AppLayoutContext.Provider>
+      </AppLayoutContext.Provider>
+    </CurrentClassContext.Provider>
   )
 }

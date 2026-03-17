@@ -1,8 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const DELETE_WIDTH = 72
+import { Button } from '@/components/ui/button'
 
 export interface ClassItem {
   id: string
@@ -13,7 +11,7 @@ interface SwipeableClassRowProps {
   classItem: ClassItem
   isCurrent: boolean
   isOpen: boolean
-  /** 为 false 时不显示删除、不允许左滑删除（如仅剩一个班级时） */
+  /** 为 false 时不显示删除按钮（如仅剩一个班级时） */
   canDelete?: boolean
   onSwipeOpen: (id: string | null) => void
   onSelect: () => void
@@ -23,204 +21,56 @@ interface SwipeableClassRowProps {
 export function SwipeableClassRow({
   classItem,
   isCurrent,
-  isOpen,
+  isOpen: _isOpen,
   canDelete = true,
-  onSwipeOpen,
+  onSwipeOpen: _onSwipeOpen,
   onSelect,
   onDelete,
 }: SwipeableClassRowProps) {
-  const [dragOffset, setDragOffset] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const startXRef = useRef(0)
-  const isDragRef = useRef(false)
-  const didPressRef = useRef(false)
-
-  useEffect(() => {
-    if (!isOpen) setDragOffset(0)
-  }, [isOpen])
-
-  const setOffset = useCallback((x: number) => {
-    if (!canDelete) {
-      setDragOffset(0)
-      return
-    }
-    const v = Math.max(-DELETE_WIDTH, Math.min(0, x))
-    setDragOffset(v)
-  }, [canDelete])
-
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      startXRef.current = e.touches[0].clientX
-      isDragRef.current = false
-      setIsDragging(false)
-    },
-    []
-  )
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      const dx = e.touches[0].clientX - startXRef.current
-      if (Math.abs(dx) > 5) {
-        isDragRef.current = true
-        setIsDragging(true)
-      }
-      setOffset(isOpen ? -DELETE_WIDTH + dx : dx)
-    },
-    [isOpen, setOffset]
-  )
-
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      if (isDragRef.current) {
-        if (dragOffset < -DELETE_WIDTH / 2) {
-          onSwipeOpen(classItem.id)
-          setDragOffset(-DELETE_WIDTH)
-        } else {
-          onSwipeOpen(null)
-          setDragOffset(0)
-        }
-        setIsDragging(false)
-      } else {
-        onSwipeOpen(null)
-        setDragOffset(0)
-        const touch = e.changedTouches[0]
-        const rect = containerRef.current?.getBoundingClientRect()
-        if (canDelete && isOpen && rect && touch.clientX >= rect.right - DELETE_WIDTH) {
-          onDelete()
-        } else {
-          onSelect()
-        }
-      }
-    },
-    [canDelete, classItem.id, dragOffset, isOpen, onSwipeOpen, onSelect, onDelete]
-  )
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return
-      startXRef.current = e.clientX
-      isDragRef.current = false
-      setIsDragging(false)
-      didPressRef.current = true
-    },
-    []
-  )
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.buttons !== 1) return
-      const dx = e.clientX - startXRef.current
-      if (Math.abs(dx) > 5) {
-        isDragRef.current = true
-        setIsDragging(true)
-      }
-      setOffset(isOpen ? -DELETE_WIDTH + dx : dx)
-    },
-    [isOpen, setOffset]
-  )
-
-  const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      if (!didPressRef.current) return
-      didPressRef.current = false
-      if (isDragRef.current) {
-        if (dragOffset < -DELETE_WIDTH / 2) {
-          onSwipeOpen(classItem.id)
-          setDragOffset(-DELETE_WIDTH)
-        } else {
-          onSwipeOpen(null)
-          setDragOffset(0)
-        }
-        setIsDragging(false)
-      } else {
-        onSwipeOpen(null)
-        setDragOffset(0)
-        const inDeleteZone =
-          canDelete &&
-          isOpen &&
-          containerRef.current &&
-          e.clientX >= containerRef.current.getBoundingClientRect().right - DELETE_WIDTH
-        if (inDeleteZone) {
-          onDelete()
-        } else {
-          onSelect()
-        }
-      }
-    },
-    [canDelete, classItem.id, dragOffset, isOpen, onSwipeOpen, onSelect, onDelete]
-  )
-
-  const handleMouseLeave = useCallback(() => {
-    if (!didPressRef.current) return
-    didPressRef.current = false
-    if (isDragRef.current) {
-      if (dragOffset < -DELETE_WIDTH / 2) {
-        onSwipeOpen(classItem.id)
-        setDragOffset(-DELETE_WIDTH)
-      } else {
-        onSwipeOpen(null)
-        setDragOffset(0)
-      }
-      setIsDragging(false)
-    } else {
-      onSwipeOpen(null)
-      setDragOffset(0)
-    }
-  }, [canDelete, classItem.id, dragOffset, onSwipeOpen])
-
-  const displayOffset = canDelete ? (isDragging ? dragOffset : (isOpen ? -DELETE_WIDTH : dragOffset)) : 0
-
   return (
-    <div
-      ref={containerRef}
-      className="relative overflow-hidden rounded-xl"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-    >
-      {canDelete && (
-        <div
-          className="absolute right-0 top-0 flex h-full w-[72px] items-center justify-center rounded-r-xl bg-[var(--error)]"
+    <div className="relative overflow-hidden rounded-[12px]">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
+        className={cn(
+          'flex h-11 w-full items-center gap-2 px-4',
+          'transition-[background-color] duration-200 ease-out',
+          isCurrent
+            ? 'bg-[var(--primary)]/[0.07]'
+            : 'bg-[var(--surface)] active:bg-[var(--surface-2)]'
+        )}
+      >
+        <span
+          className={cn(
+            'h-full min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[2.75rem]',
+            isCurrent ? 'text-[var(--primary)]' : 'text-[var(--on-surface)]'
+          )}
         >
-          <button
+          {classItem.name}
+        </span>
+        {isCurrent && (
+          <span className="shrink-0 rounded bg-[var(--primary-container)] px-2 py-0.5 text-[11px] font-medium text-[var(--primary)]">
+            当前班级
+          </span>
+        )}
+        {canDelete && (
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
               onDelete()
             }}
-            className="flex h-full w-full flex-col items-center justify-center gap-[2px] text-white transition-opacity duration-75 active:opacity-60"
+            className="shrink-0 text-[var(--on-surface-muted)] active:opacity-80"
             aria-label="删除"
           >
-            <Trash2 className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            <span className="text-[11px] font-semibold tracking-tight">删除</span>
-          </button>
-        </div>
-      )}
-      <div
-        className={cn(
-          'relative z-10 flex w-full items-center px-4 py-3',
-          'transition-[transform,background-color] duration-200 ease-out',
-          isCurrent
-            ? 'bg-[var(--primary)]/[0.07]'
-            : 'bg-[var(--surface)] active:bg-[var(--surface-2)]'
+            <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+          </Button>
         )}
-        style={{
-          transform: `translateX(${displayOffset}px)`,
-        }}
-      >
-        <span className={cn(
-          'min-w-0 flex-1 truncate text-left text-[14px] font-semibold',
-          isCurrent ? 'text-[var(--primary)]' : 'text-[var(--on-surface)]'
-        )}>
-          {classItem.name}
-        </span>
       </div>
     </div>
   )

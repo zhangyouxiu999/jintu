@@ -19,7 +19,7 @@ export async function PATCH(
     // 如果修改了班级，需要处理旧班级的排序移除逻辑（可选，取决于系统对排序的要求）
     const student = await Student.findByIdAndUpdate(
       id,
-      { ...data, updated_at: new Date() },
+      { $set: { ...data, updated_at: new Date() } },
       { new: true, runValidators: true }
     );
 

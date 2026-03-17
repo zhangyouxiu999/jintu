@@ -205,11 +205,25 @@ export async function POST(
     if (action === "update_attendance") {
       const date = customDate || new Date().toISOString().split("T")[0];
       const period = body.period !== undefined ? body.period : 0;
+      if (!student_id) {
+        return NextResponse.json(
+          { error: "student_id is required" },
+          { status: 400 }
+        );
+      }
       const finalStatus =
         status !== undefined && status !== null ? Number(status) : 0;
       const log = await AttendanceLog.findOneAndUpdate(
         { class_code: classCode, student_id, date, period: period },
-        { status: finalStatus, updated_at: new Date() },
+        {
+          $set: { status: finalStatus, updated_at: new Date() },
+          $setOnInsert: {
+            class_code: classCode,
+            student_id,
+            date,
+            period,
+          },
+        },
         { upsert: true, new: true }
       );
       return NextResponse.json(log);
@@ -252,7 +266,15 @@ export async function POST(
         return {
           updateOne: {
             filter: { class_code: classCode, student_id: sId, date, period },
-            update: { status, updated_at: new Date() },
+            update: {
+              $set: { status, updated_at: new Date() },
+              $setOnInsert: {
+                class_code: classCode,
+                student_id: sId,
+                date,
+                period,
+              },
+            },
             upsert: true,
           },
         };
@@ -322,8 +344,12 @@ export async function POST(
       await AttendanceHistory.findOneAndUpdate(
         { class_code: classCode, date, period },
         {
-          records,
-          confirmed_at: new Date(),
+          $set: { records, confirmed_at: new Date() },
+          $setOnInsert: {
+            class_code: classCode,
+            date,
+            period,
+          },
         },
         { upsert: true, new: true }
       );
@@ -337,7 +363,7 @@ export async function POST(
     if (action === "update_categories") {
       const updatedClass = await Class.findOneAndUpdate(
         { code: classCode },
-        { major_categories, updated_at: new Date() },
+        { $set: { major_categories, updated_at: new Date() } },
         { new: true }
       );
       return NextResponse.json(updatedClass);
@@ -352,7 +378,7 @@ export async function POST(
       );
       const updatedClass = await Class.findOneAndUpdate(
         { code: classCode },
-        { student_order, updated_at: new Date() },
+        { $set: { student_order, updated_at: new Date() } },
         { new: true }
       );
       return NextResponse.json(updatedClass);
@@ -378,7 +404,7 @@ export async function POST(
 
       const updatedClass = await Class.findOneAndUpdate(
         { code: classCode },
-        { code: new_code, updated_at: new Date() },
+        { $set: { code: new_code, updated_at: new Date() } },
         { new: true }
       );
 
@@ -443,11 +469,13 @@ export async function POST(
       const announcement = await Announcement.findByIdAndUpdate(
         announcementId,
         {
-          content,
-          expiration_type,
-          starts_at: startsAt,
-          expires_at: expiresAt,
-          updated_at: new Date(),
+          $set: {
+            content,
+            expiration_type,
+            starts_at: startsAt,
+            expires_at: expiresAt,
+            updated_at: new Date(),
+          },
         },
         { new: true }
       );

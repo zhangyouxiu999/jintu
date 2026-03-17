@@ -1,9 +1,8 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { School } from 'lucide-react'
+import { useCurrentClassId } from '@/components/AppLayout'
 import { useClassList } from '@/hooks/useClassList'
-import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
-import { storage } from '@/store/storage'
 
 /**
  * 首页：有班级时跳转到默认班级（列表第一项）的点名页，无班级时显示空状态并引导到「我的-班级管理」。
@@ -11,8 +10,8 @@ import { storage } from '@/store/storage'
 export default function HomePage() {
   const navigate = useNavigate()
   const { list, loading } = useClassList()
-  const storedId = storage.loadCurrentClassId()
-  const currentClassId = list.find((c) => c.id === storedId)?.id ?? list[0]?.id
+  const { currentClassId } = useCurrentClassId()
+  const effectiveClassId = list.find((c) => c.id === currentClassId)?.id ?? list[0]?.id
 
   if (loading) {
     return (
@@ -20,13 +19,12 @@ export default function HomePage() {
     )
   }
 
-  if (list.length > 0 && currentClassId) {
-    return <Navigate to={`/attendance/${currentClassId}`} replace />
+  if (list.length > 0 && effectiveClassId) {
+    return <Navigate to={`/attendance/${effectiveClassId}`} replace />
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] px-5 pb-safe">
-      <PageHeader title="首页" />
       <main className="flex flex-1 flex-col items-center justify-center py-12">
         <div className="rounded-[22px] bg-[var(--surface)] border border-[var(--outline-variant)] px-6 py-14 text-center w-full max-w-[300px]">
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/60">

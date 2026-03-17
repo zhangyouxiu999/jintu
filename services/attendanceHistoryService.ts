@@ -169,7 +169,10 @@ export class AttendanceHistoryService {
 
     await AttendanceLog.findOneAndUpdate(
       { class_code: code, date, period, student_id },
-      { status, updated_at: new Date() },
+      {
+        $set: { status, updated_at: new Date() },
+        $setOnInsert: { class_code: code, date, period, student_id },
+      },
       { upsert: true }
     );
 
@@ -231,4 +234,3 @@ export class AttendanceHistoryService {
     };
   }
 }
-

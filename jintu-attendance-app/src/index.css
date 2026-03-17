@@ -28,6 +28,13 @@
   --radius-full: 9999px;
   --touch-target: 44px;  /* iOS HIG 最小触控目标 44pt */
 
+  /* === Switch（与 8pt 网格一致，由轨道与内边距推导滑块与行程） === */
+  --switch-track-width: var(--space-40);
+  --switch-track-height: var(--space-20);
+  --switch-inset: 2px;
+  --switch-thumb-size: calc(var(--switch-track-height) - 2 * var(--switch-inset));
+  --switch-thumb-travel: calc(var(--switch-track-width) - var(--switch-thumb-size) - 2 * var(--switch-inset));
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -71,6 +78,27 @@
   --surface-border: rgba(60, 60, 67, 0.12);
   --error: #FF3B30;
   --error-container: rgba(255, 59, 48, 0.12);
+  --on-error-container: #A63D38;
+
+  /* === 课表卡片色（类型区分，与考勤 error/success 语义脱钩） === */
+  --schedule-primary-bg: var(--primary-container);
+  --schedule-primary-text: var(--on-primary-container);
+  --schedule-primary-bar: var(--primary);
+  --schedule-type-2-bg: rgba(175, 82, 222, 0.12);
+  --schedule-type-2-text: #6B2D91;
+  --schedule-type-2-bar: rgba(175, 82, 222, 0.4);
+  --schedule-type-3-bg: rgba(255, 149, 0, 0.12);
+  --schedule-type-3-text: #C93400;
+  --schedule-type-3-bar: rgba(255, 149, 0, 0.4);
+  --schedule-neutral-bg: var(--surface);
+  --schedule-neutral-text: var(--on-surface-variant);
+  --schedule-neutral-sub: var(--on-surface-muted);
+  --schedule-neutral-bar: var(--outline-variant);
+  /* 兼容旧引用（red/teal 映射到 type-2/type-3） */
+  --schedule-error-bg: var(--schedule-type-2-bg);
+  --schedule-error-text: var(--schedule-type-2-text);
+  --schedule-success-bg: var(--schedule-type-3-bg);
+  --schedule-success-text: var(--schedule-type-3-text);
 
   /* === 毛玻璃 === */
   --glass-bg: rgba(255, 255, 255, 0.78);
@@ -78,9 +106,9 @@
   --glass-blur: 24px;
 
   /* === 文字层级（iOS 对齐，便于主题/无障碍） === */
-  --text-dialog-title-size: 17px;
+  --text-dialog-title-size: 15px;
   --text-footnote-size: 11px;
-  --text-caption-size: 13px;
+  --text-caption-size: 12px;
   --text-label-size: 15px;
 }
 
@@ -149,6 +177,24 @@
   }
 }
 
+/* 安全区留白工具类 */
+.pt-safe { padding-top: var(--safe-top); }
+.pb-safe { padding-bottom: var(--safe-bottom); }
+
+/* 横向滚动隐藏滚动条（周历等） */
+.hide-scrollbar { scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* 细滚动条（课程表等，提示可横向滑动） */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline-variant) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+
 /*
   类型比例 · iOS 层级（SF / HIG 对齐）
   大标题 > 区块标题 > 弹窗标题 > 正文 > 标签 > 说明 > 图注
@@ -157,12 +203,13 @@
 .text-large-title  { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.28; color: var(--on-surface); }
 .text-display      { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.28; color: var(--on-surface); }
 .text-title        { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--on-surface); }
-.text-dialog-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--on-surface); }
+.text-dialog-title { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--on-surface); }
 .text-body         { font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--on-surface); }
 .text-label        { font-size: 15px; font-weight: 500; line-height: 1.45; color: var(--on-surface); }
-.text-caption      { font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--on-surface-muted); }
+.text-caption      { font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--on-surface-muted); }
 .text-footnote     { font-size: 11px; font-weight: 500; line-height: 1.45; color: var(--on-surface-muted); }
 .text-tiny         { font-size: 11px; font-weight: 500; line-height: 1.45; }
+.text-schedule-course { font-size: 13px; font-weight: 500; line-height: 1.35; }
 
 /* 玻璃顶栏/底栏 */
 .glass-bar {
@@ -260,5 +307,19 @@
 @media (prefers-color-scheme: dark) {
   :root {
     /* --bg, --surface, --on-surface 等后续在此填写 */
+    /* 课表卡片色：深色下需保证对比度 */
+    --schedule-primary-bg: rgba(0, 122, 255, 0.22);
+    --schedule-primary-text: #5EB0FF;
+    --schedule-type-2-bg: rgba(191, 90, 242, 0.22);
+    --schedule-type-2-text: #D0A3F0;
+    --schedule-type-3-bg: rgba(255, 159, 10, 0.22);
+    --schedule-type-3-text: #FFB340;
+    --schedule-error-bg: var(--schedule-type-2-bg);
+    --schedule-error-text: var(--schedule-type-2-text);
+    --schedule-success-bg: var(--schedule-type-3-bg);
+    --schedule-success-text: var(--schedule-type-3-text);
+    --schedule-neutral-bg: rgba(60, 60, 67, 0.18);
+    --schedule-neutral-text: rgba(235, 235, 245, 0.85);
+    --schedule-neutral-sub: rgba(235, 235, 245, 0.6);
   }
 }

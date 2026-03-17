@@ -1,14 +1,12 @@
 import { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronDown, FileDown, FileSpreadsheet, FileUp, Plus, Pencil, Trash2, ArrowUpDown, MoreHorizontal, Calendar, History as HistoryIcon, ListChecks } from 'lucide-react'
+import { useParams, useLocation } from 'react-router-dom'
+import { ChevronDown, FileDown, FileUp, Plus, Pencil, Trash2, ArrowUpDown } from 'lucide-react'
 import { useClass } from '@/hooks/useClass'
-import { useClassList } from '@/hooks/useClassList'
 import { useGradesImport } from '@/hooks/useGradesImport'
 import type { GradesForClass, GradesPeriod } from '@/types'
 import { storage } from '@/store/storage'
 import { useAppLayout } from '@/components/AppLayout'
-import PageHeader, { pageHeaderShellClassName } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -31,11 +29,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { showToast } from '@/lib/toast'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { buildGradesOnlyWorkbook } from '@/lib/exportClassExcel'
+import { shareOrDownloadFile } from '@/lib/shareOrDownload'
+import { showToast } from '@/lib/toast'
 
 const defaultSubjects = ['语文', '数学', '英语']
 
@@ -53,9 +53,8 @@ function newPeriodId() {
 
 export default function Grades() {
   const { classId } = useParams<{ classId: string }>()
-  const navigate = useNavigate()
+  const location = useLocation()
   const { classEntity, students, loading } = useClass(classId)
-  const { list: classList } = useClassList()
   const [periods, setPeriods] = useState<GradesPeriod[]>([])
   const [currentPeriodId, setCurrentPeriodId] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ studentId: string; subject: string } | null>(null)
@@ -71,9 +70,10 @@ export default function Grades() {
   const [renameSubject, setRenameSubject] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [deleteSubjectConfirm, setDeleteSubjectConfirm] = useState<string | null>(null)
-  const [editingPeriodTitle, setEditingPeriodTitle] = useState(false)
-  const [periodTitleValue, setPeriodTitleValue] = useState('')
-  const periodTitleInputRef = useRef<HTMLInputElement>(null)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [exportScope, setExportScope] = useState<'current' | 'all'>('current')
+  const [exportPeriodId, setExportPeriodId] = useState<string | null>(null)
+  const [exportSubmitting, setExportSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const subjectAnchorRef = useRef<HTMLTableCellElement | null>(null)
@@ -81,16 +81,23 @@ export default function Grades() {
 
   useEffect(() => {
     setEditing(null)
-    setEditingPeriodTitle(false)
   }, [currentPeriodId])
 
   useEffect(() => {
     if (!classId) return
     const all = storage.loadGrades()
     const list = all?.[classId]
+    const statePeriodId = (location.state as { periodId?: string } | null)?.periodId
     if (list?.length) {
       setPeriods(list)
-      setCurrentPeriodId((id) => (id && list.some((p) => p.id === id)) ? id : list[0].id)
+      const validStateId = statePeriodId && list.some((p) => p.id === statePeriodId)
+      const savedId = storage.loadCurrentPeriodId(classId)
+      const validSavedId = savedId && list.some((p) => p.id === savedId)
+      setCurrentPeriodId((id) => {
+        if (validStateId) return statePeriodId!
+        if (validSavedId) return savedId!
+        return (id && list.some((p) => p.id === id)) ? id : list[0].id
+      })
     } else {
       const first: GradesPeriod = { id: newPeriodId(), name: '第一期', subjects: [...defaultSubjects], scores: {} }
       setPeriods([first])
@@ -98,7 +105,11 @@ export default function Grades() {
       const nextAll = { ...(all ?? {}), [classId]: [first] }
       storage.saveGrades(nextAll)
     }
-  }, [classId])
+  }, [classId, location.state])
+
+  useEffect(() => {
+    if (classId && currentPeriodId) storage.saveCurrentPeriodId(classId, currentPeriodId)
+  }, [classId, currentPeriodId])
 
   const currentPeriod = periods.find((p) => p.id === currentPeriodId)
   const grades: GradesForClass = useMemo(
@@ -149,7 +160,7 @@ export default function Grades() {
     setPageActions({
       importAction: {
         id: 'grades-import',
-        label: '导入成绩 Excel',
+        label: '导入成绩单',
         icon: FileUp,
         disabled: importExcelSubmitting,
         onSelect: () => importExcelFileRef.current?.click(),
@@ -158,26 +169,27 @@ export default function Grades() {
         id: 'grades-export',
         label: '导出成绩单',
         icon: FileDown,
-        disabled: true,
+        disabled: exportSubmitting,
+        onSelect: () => { setExportScope('current'); setExportPeriodId(currentPeriodId); setExportDialogOpen(true) },
       },
       extraActions: [
         { id: 'grades-add-subject', label: '添加科目', icon: Plus, onSelect: () => setAddSubjectOpen(true) },
         { id: 'grades-add-period', label: '添加成绩单', icon: Plus, onSelect: () => { setNewPeriodName(`第${periods.length + 1}期`); setAddPeriodOpen(true) } },
+        {
+          id: 'grades-switch-period',
+          label: '切换期',
+          icon: ChevronDown,
+          children: periods.map((p) => ({
+            id: p.id,
+            label: p.name,
+            onSelect: () => setCurrentPeriodId(p.id),
+            disabled: currentPeriodId === p.id,
+          })),
+        },
       ],
     })
     return () => setPageActions({})
-  }, [classId, loading, importExcelSubmitting, periods.length, setPageActions])
-
-  useEffect(() => {
-    if (editingPeriodTitle) periodTitleInputRef.current?.focus()
-  }, [editingPeriodTitle])
-
-  const savePeriodTitle = useCallback(() => {
-    if (!currentPeriod) return
-    const name = periodTitleValue.trim() || currentPeriod.name
-    persist(grades, name)
-    setEditingPeriodTitle(false)
-  }, [currentPeriod, periodTitleValue, grades, persist])
+  }, [classId, loading, importExcelSubmitting, exportSubmitting, periods, currentPeriodId, setPageActions])
 
   const getScore = useCallback(
     (studentId: string, subject: string) => grades.scores[studentId]?.[subject] ?? '',
@@ -201,6 +213,38 @@ export default function Grades() {
     })
     return list
   }, [students, sortBy, sortDir, grades.subjects, getScore])
+
+  const handleExportGrades = useCallback(async () => {
+    if (!classEntity || periods.length === 0) {
+      showToast('暂无成绩单可导出', { variant: 'error' })
+      return
+    }
+    const periodIdToExport = exportPeriodId ?? currentPeriodId ?? periods[0]?.id
+    const singlePeriod = periodIdToExport ? periods.find((p) => p.id === periodIdToExport) : periods[0]
+    const periodsToExport = exportScope === 'current' && singlePeriod
+      ? [singlePeriod]
+      : periods
+    if (periodsToExport.length === 0) {
+      showToast('请先选择要导出的期', { variant: 'error' })
+      return
+    }
+    setExportSubmitting(true)
+    try {
+      const sortedList = sortedStudents.map((s) => ({ id: s.id, name: s.name }))
+      const buf = await buildGradesOnlyWorkbook(classEntity.name, periodsToExport, sortedList)
+      const fileName =
+        exportScope === 'current' && singlePeriod
+          ? `${classEntity.name}-${singlePeriod.name}.xlsx`
+          : `${classEntity.name}-成绩单.xlsx`
+      await shareOrDownloadFile(buf, fileName, { dialogTitle: '导出成绩单' })
+      showToast('已导出', { variant: 'success', duration: 1800 })
+      setExportDialogOpen(false)
+    } catch {
+      showToast('导出失败，请重试', { variant: 'error' })
+    } finally {
+      setExportSubmitting(false)
+    }
+  }, [classEntity, periods, currentPeriodId, exportPeriodId, exportScope, sortedStudents])
 
   const setScore = (studentId: string, subject: string, value: string) => {
     const next = { ...grades }
@@ -315,7 +359,9 @@ export default function Grades() {
       if (subjectMenuRef.current?.contains(e.target as Node)) return
       setSubjectMenuSubject(null)
     }
-    const t = setTimeout(() => document.addEventListener('click', handleOutside, false), 0)
+    // 延迟注册，避免触摸端长按松手后的合成 click 立刻关闭菜单（通常 200–350ms 内触发）
+    const delayMs = 400
+    const t = setTimeout(() => document.addEventListener('click', handleOutside, false), delayMs)
     return () => {
       clearTimeout(t)
       document.removeEventListener('click', handleOutside, false)
@@ -337,9 +383,8 @@ export default function Grades() {
   if (loading || !classEntity) {
     return (
       <div className="min-h-screen bg-[var(--bg)]">
-        <PageHeader title="成绩单" />
         <main className="flex min-h-[200px] items-center justify-center px-[var(--page-x)] py-4">
-          <p className="text-label text-[var(--on-surface-muted)]">{loading ? '' : '班级不存在'}</p>
+          <p className="text-[15px] text-[var(--on-surface-muted)]">{loading ? '' : '班级不存在'}</p>
         </main>
       </div>
     )
@@ -347,6 +392,76 @@ export default function Grades() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
+      <Dialog open={exportDialogOpen} onOpenChange={(open) => { setExportDialogOpen(open); if (!open) { setExportScope('current'); setExportPeriodId(null) } }}>
+        <DialogContent className="gap-0 max-w-[min(90vw,340px)]">
+          <DialogHeader className="text-center pb-2">
+            <DialogTitle className="text-[17px] font-bold leading-tight text-[var(--on-surface)]">
+              导出成绩单
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-3">
+              <input
+                type="radio"
+                id="export-one"
+                name="exportScope"
+                checked={exportScope === 'current'}
+                onChange={() => setExportScope('current')}
+                className="h-3.5 w-3.5 shrink-0 accent-[var(--primary)]"
+              />
+              <label htmlFor="export-one" className="text-[13px] font-normal text-[var(--on-surface)] cursor-pointer shrink-0">
+                导出
+              </label>
+              {exportScope === 'current' && periods.length > 0 && (() => {
+                const selectedId = exportPeriodId ?? currentPeriodId ?? periods[0]?.id ?? ''
+                const selectedPeriod = periods.find((p) => p.id === selectedId)
+                const triggerLabel = selectedPeriod
+                  ? `${selectedPeriod.name}${selectedPeriod.id === currentPeriodId ? '（当前期）' : ''}`
+                  : '选择期'
+                return (
+                  <Select
+                    value={selectedId || undefined}
+                    onValueChange={(v) => setExportPeriodId(v || null)}
+                  >
+                    <SelectTrigger className="min-w-0 flex-1 h-7 px-2.5 text-[13px] font-normal [&_svg]:h-3 [&_svg]:w-3" aria-label="选择期">
+                      <SelectValue placeholder="选择期">{triggerLabel}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {periods.map((p) => (
+                        <SelectItem key={p.id} value={p.id} textValue={p.name}>
+                          {p.name}{p.id === currentPeriodId ? '（当前期）' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              })()}
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="radio"
+                id="export-all"
+                name="exportScope"
+                checked={exportScope === 'all'}
+                onChange={() => setExportScope('all')}
+                className="h-3.5 w-3.5 accent-[var(--primary)]"
+              />
+              <label htmlFor="export-all" className="text-[13px] font-normal text-[var(--on-surface)] cursor-pointer">
+                导出全部（共{periods.length}期）
+              </label>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(false)} className="!h-8 !min-h-0 rounded-[var(--radius-sm)] px-2.5 !text-[11px] font-normal">
+              取消
+            </Button>
+            <Button size="sm" onClick={handleExportGrades} disabled={exportSubmitting} className="!h-8 !min-h-0 rounded-[var(--radius-sm)] px-2.5 !text-[11px] font-normal">
+              {exportSubmitting ? '导出中…' : '确定导出'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!deleteSubjectConfirm} onOpenChange={(open) => !open && setDeleteSubjectConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader className="text-center sm:text-center">
@@ -362,134 +477,7 @@ export default function Grades() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 顶栏 · 标题与切换期合并为芯片样式（与点名页一致） */}
-      <header className={`${pageHeaderShellClassName} flex flex-col`}>
-        <div className="flex min-h-14 items-center justify-between gap-2 border-b border-[var(--outline-variant)] px-[var(--page-x)] py-2">
-          <div className="w-10 shrink-0" aria-hidden />
-          <div className="flex min-w-0 flex-1 justify-start overflow-hidden">
-            <div className="flex max-w-full items-center gap-0 rounded-[var(--radius-sm)] border border-[var(--outline-variant)] bg-[var(--surface-2)]">
-              {editingPeriodTitle ? (
-                <div className="flex min-w-0 flex-1 items-center py-1 pl-2 pr-2">
-                  <Input
-                    ref={periodTitleInputRef}
-                    value={periodTitleValue}
-                    onChange={(e) => setPeriodTitleValue(e.target.value)}
-                    onBlur={savePeriodTitle}
-                    onKeyDown={(e) => { if (e.key === 'Enter') savePeriodTitle() }}
-                    className="min-w-0 flex-1 border-0 bg-transparent py-1 text-body font-bold text-[var(--on-surface)] shadow-none focus-visible:ring-0"
-                    aria-label="成绩单标题"
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="min-w-0 max-w-[45vw] flex-1 truncate py-2 pl-3 pr-2 text-left text-body font-bold text-[var(--on-surface)] active:bg-[var(--surface-hover)]"
-                  onClick={() => {
-                    setPeriodTitleValue(currentPeriod?.name ?? '')
-                    setEditingPeriodTitle(true)
-                  }}
-                  aria-label="点击修改成绩单标题"
-                >
-                  {currentPeriod?.name ?? '成绩单'}
-                </button>
-              )}
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex shrink-0 items-center gap-1 border-l border-[var(--outline-variant)] py-2 pl-2 pr-3 text-caption text-[var(--on-surface-variant)] active:bg-[var(--surface-hover)]"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                    切换期
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="max-h-[60vh] min-w-[10rem] overflow-auto">
-                  {periods.map((p) => (
-                    <DropdownMenuItem
-                      key={p.id}
-                      onSelect={() => setCurrentPeriodId(p.id)}
-                      className={currentPeriodId === p.id ? 'bg-[var(--surface-2)]' : ''}
-                      disabled={currentPeriodId === p.id}
-                    >
-                      {p.name}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault()
-                      setNewPeriodName(`第${periods.length + 1}期`)
-                      setAddPeriodOpen(true)
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    添加成绩单
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-variant)] active:scale-95"
-                aria-label="更多"
-              >
-                <MoreHorizontal className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[10rem]">
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault()
-                  importExcelFileRef.current?.click()
-                }}
-                disabled={importExcelSubmitting}
-              >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                {importExcelSubmitting ? '导入中…' : '导入 Excel'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAddSubjectOpen(true) }}>
-                <Plus className="mr-2 h-4 w-4" />
-                添加科目
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); if (classId) navigate(`/schedule/${classId}`) }}>
-                <Calendar className="mr-2 h-4 w-4" />
-                课程表
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); if (classId) navigate(`/history/${classId}`) }}>
-                <HistoryIcon className="mr-2 h-4 w-4" />
-                考勤历史
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); if (classId) navigate(`/attendance/${classId}`) }}>
-                <ListChecks className="mr-2 h-4 w-4" />
-                点名
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {classList.map((cls) => (
-                <DropdownMenuItem
-                  key={cls.id}
-                  onSelect={(e) => {
-                    e.preventDefault()
-                    if (cls.id === classId) return
-                    showToast(`已切换到 ${cls.name}`, { variant: 'success', duration: 1800 })
-                    navigate(`/grades/${cls.id}`, { replace: true })
-                  }}
-                  disabled={cls.id === classId}
-                  className={cls.id === classId ? 'bg-[var(--surface-2)]' : ''}
-                >
-                  {cls.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
-
-      <main className="px-[var(--page-x)] py-4 pb-[calc(var(--space-24)+var(--safe-bottom))]">
+      <main className="pb-[calc(var(--space-24)+var(--safe-bottom))]">
         <input
           ref={importExcelFileRef}
           type="file"
@@ -499,15 +487,15 @@ export default function Grades() {
         />
         <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--outline)] bg-[var(--surface)] shadow-elevation-card [-webkit-overflow-scrolling:touch]">
           <table
-            className="w-full min-w-[var(--grades-table-min-width)] border-collapse text-caption"
+            className="w-full min-w-[var(--grades-table-min-width)] border-collapse text-[13px]"
             style={{ '--grades-table-min-width': `${40 + 80 + grades.subjects.length * 72 + 72}px` } as CSSProperties}
           >
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 w-10 min-w-[2.5rem] border-b border-r border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-label font-medium text-[var(--on-surface-muted)]">
+                <th className="sticky left-0 z-10 w-10 min-w-[2.5rem] border-b border-r border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-[13px] font-medium text-[var(--on-surface-muted)]">
                   序号
                 </th>
-                <th className="sticky left-10 z-10 w-20 min-w-[5rem] border-b border-r border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-label font-medium text-[var(--on-surface)]">
+                <th className="sticky left-10 z-10 w-20 min-w-[5rem] border-b border-r border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-[13px] font-medium text-[var(--on-surface)]">
                   <div className="flex items-center justify-center gap-1">
                     姓名
                     <DropdownMenu modal={false}>
@@ -544,7 +532,7 @@ export default function Grades() {
                   <th
                     key={sub}
                   className={cn(
-                    'w-[72px] min-w-[72px] select-none touch-manipulation border-b border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-label font-medium text-[var(--on-surface)]',
+                    'w-[72px] min-w-[72px] select-none touch-manipulation border-b border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-[13px] font-medium text-[var(--on-surface)]',
                     subjectMenuSubject === sub && 'bg-[var(--surface-hover)]'
                   )}
                     onTouchStart={(e) => handleSubjectPointerDown(sub, e)}
@@ -558,7 +546,7 @@ export default function Grades() {
                     <span className="block truncate">{sub}</span>
                   </th>
                 ))}
-                <th className="w-[72px] min-w-[72px] border-b border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-label font-medium text-[var(--on-surface-muted)]">
+                <th className="w-[72px] min-w-[72px] border-b border-[var(--outline-variant)] bg-[var(--surface-2)] py-2 text-center text-[13px] font-medium text-[var(--on-surface-muted)]">
                   总分
                 </th>
               </tr>
@@ -566,10 +554,10 @@ export default function Grades() {
             <tbody>
               {sortedStudents.map((s, index) => (
                 <tr key={s.id} className="border-b border-[var(--outline-variant)]">
-                  <td className="sticky left-0 z-10 w-10 min-w-[2.5rem] border-r border-[var(--outline-variant)] bg-[var(--surface)] py-1.5 text-center text-caption text-[var(--on-surface-muted)]">
+                  <td className="sticky left-0 z-10 w-10 min-w-[2.5rem] border-r border-[var(--outline-variant)] bg-[var(--surface)] py-1.5 text-center text-[13px] text-[var(--on-surface-muted)]">
                     {index + 1}
                   </td>
-                  <td className="sticky left-10 z-10 w-20 min-w-[5rem] border-r border-[var(--outline-variant)] bg-[var(--surface)] py-1.5 pl-2 text-label text-[var(--on-surface)]">
+                  <td className="sticky left-10 z-10 w-20 min-w-[5rem] border-r border-[var(--outline-variant)] bg-[var(--surface)] py-1.5 text-center text-[13px] font-medium text-[var(--on-surface)]">
                     {s.name}
                   </td>
                   {grades.subjects.map((sub) => {
@@ -588,13 +576,13 @@ export default function Grades() {
                               if (e.key === 'Enter') saveEdit()
                               if (e.key === 'Escape') setEditing(null)
                             }}
-                            className="mx-auto h-8 w-14 rounded border-0 bg-[var(--surface-2)] px-1 text-center text-label outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                            className="mx-auto h-8 w-14 rounded border-0 bg-[var(--surface-2)] px-1 text-center text-[13px] outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                           />
                         ) : (
                           <button
                             type="button"
                             onClick={() => startEdit(s.id, sub)}
-                            className="min-h-[32px] w-full rounded px-1 text-label text-[var(--on-surface)] active:bg-[var(--surface-hover)]"
+                            className="min-h-[32px] w-full rounded px-1 text-[13px] text-[var(--on-surface)] active:bg-[var(--surface-hover)]"
                           >
                             {getScore(s.id, sub) || '—'}
                           </button>
@@ -602,7 +590,7 @@ export default function Grades() {
                       </td>
                     )
                   })}
-                  <td className="border-b border-[var(--outline-variant)] py-1.5 text-center text-label font-medium text-[var(--on-surface)]">
+                  <td className="border-b border-[var(--outline-variant)] py-1.5 text-center text-[13px] font-medium text-[var(--on-surface)]">
                     {sumScores(
                       grades.subjects.reduce(
                         (acc, sub) => ({ ...acc, [sub]: getScore(s.id, sub) }),
@@ -619,19 +607,18 @@ export default function Grades() {
 
       <Dialog open={addSubjectOpen} onOpenChange={setAddSubjectOpen}>
         <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
+          <DialogHeader className="text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">添加科目</DialogTitle>
-            <DialogDescription className="text-caption text-[var(--on-surface-muted)]">输入科目名称，如：物理、化学</DialogDescription>
           </DialogHeader>
-          <div className="flex gap-2 py-2">
+          <div className="flex gap-2 py-1">
             <Input
               placeholder="科目名"
               value={newSubjectName}
               onChange={(e) => setNewSubjectName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
-              className="flex-1 rounded-[var(--radius-sm)] border-[var(--outline)]"
+              className="flex-1 h-8 min-h-0 text-[14px] rounded-[var(--radius-sm)] border-[var(--outline)]"
             />
-            <Button size="sm" onClick={handleAddSubject} disabled={!newSubjectName.trim()} className="rounded-[var(--radius-sm)] bg-[var(--primary)] text-white">
+            <Button size="sm" onClick={handleAddSubject} disabled={!newSubjectName.trim()} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[11px] bg-[var(--primary)] text-white">
               添加
             </Button>
           </div>
@@ -640,19 +627,18 @@ export default function Grades() {
 
       <Dialog open={addPeriodOpen} onOpenChange={setAddPeriodOpen}>
         <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
+          <DialogHeader className="text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">添加成绩单</DialogTitle>
-            <DialogDescription className="text-caption text-[var(--on-surface-muted)]">为新成绩单起名，如：期中、期末、第一次月考</DialogDescription>
           </DialogHeader>
-          <div className="flex gap-2 py-2">
+          <div className="flex gap-2 py-1">
             <Input
               placeholder="如：期中、期末"
               value={newPeriodName}
               onChange={(e) => setNewPeriodName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddPeriod()}
-              className="flex-1 rounded-[var(--radius-sm)] border-[var(--outline)]"
+              className="flex-1 h-8 min-h-0 text-[14px] rounded-[var(--radius-sm)] border-[var(--outline)]"
             />
-            <Button size="sm" onClick={handleAddPeriod} className="rounded-[var(--radius-sm)] bg-[var(--primary)] text-white">
+            <Button size="sm" onClick={handleAddPeriod} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[11px] bg-[var(--primary)] text-white">
               添加
             </Button>
           </div>
@@ -672,7 +658,7 @@ export default function Grades() {
           >
             <button
               type="button"
-              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-label text-[var(--on-surface)] active:bg-[var(--surface-hover)]"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-[13px] font-medium text-[var(--on-surface)] active:bg-[var(--surface-hover)]"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -691,7 +677,7 @@ export default function Grades() {
             <button
               type="button"
               disabled={grades.subjects.length <= 1}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-label text-[var(--error)] active:bg-[var(--surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-left text-[13px] font-medium text-[var(--error)] active:bg-[var(--surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -717,11 +703,11 @@ export default function Grades() {
         }}
       >
         <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
+          <DialogHeader className="text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">修改科目名</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">输入新名称，不可与已有科目重复</DialogDescription>
           </DialogHeader>
-          <div className="flex gap-2 py-2">
+          <div className="flex gap-2 py-1">
             <Input
               id="grades-rename-input"
               placeholder="新科目名"
@@ -731,13 +717,13 @@ export default function Grades() {
                 if (e.key === 'Enter' && renameSubject) renameSubjectAction(renameSubject, renameValue)
                 if (e.key === 'Escape') setRenameSubject(null)
               }}
-              className="flex-1 rounded-[var(--radius-sm)] border-[var(--outline)]"
+              className="flex-1 h-8 min-h-0 text-[14px] rounded-[var(--radius-sm)] border-[var(--outline)]"
             />
             <Button
               size="sm"
               onClick={() => renameSubject && renameSubjectAction(renameSubject, renameValue)}
               disabled={!renameValue.trim() || renameValue.trim() === renameSubject || grades.subjects.includes(renameValue.trim())}
-              className="rounded-[var(--radius-sm)] bg-[var(--primary)] text-white"
+              className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[11px] bg-[var(--primary)] text-white"
             >
               确定
             </Button>

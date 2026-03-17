@@ -30,7 +30,7 @@ export default function TemplateList({
               <FileSpreadsheet className="h-4 w-4 text-[var(--primary)] sm:h-5 sm:w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className={cn(compact ? 'truncate text-caption font-medium' : 'text-label font-semibold', 'text-[var(--on-surface)]')}>
+              <h2 className={cn(compact ? 'truncate text-[12px] font-medium' : 'text-label font-semibold', 'text-[var(--on-surface)]')}>
                 {meta.name}
               </h2>
               {!compact && (

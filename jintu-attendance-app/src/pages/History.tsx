@@ -8,7 +8,6 @@ import * as studentsStore from '@/store/students'
 import type { AttendanceSnapshot } from '@/types'
 import { buildReportTextFromSnapshot, getReportDateLabelFromDate } from '@/lib/reportText'
 import { PERIOD_NAMES } from '@/lib/period'
-import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -120,24 +119,19 @@ export default function History() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
-      <PageHeader
-        title={classId && currentClass ? `${currentClass.name}历史考勤` : '本地历史'}
-        onBack={() => navigate(-1)}
-        right={
-          classId && list.length > 0 ? (
+      <main className="px-4 py-4">
+        {classId && list.length > 0 && (
+          <div className="mb-3 flex justify-end">
             <Button
               variant="outline"
               size="sm"
-              className="h-6 shrink-0 rounded-[var(--radius-sm)] border-[var(--outline)] px-1.5 text-tiny text-[var(--on-surface)]"
+              className="h-9 rounded-[var(--radius-sm)] border-[var(--outline)] px-3 text-[13px] text-[var(--on-surface)]"
               onClick={() => setExportConfirmOpen(true)}
             >
-              <Download className="mr-1 h-2.5 w-2.5" /> 导出
+              <Download className="mr-1 h-4 w-4" /> 导出
             </Button>
-          ) : null
-        }
-      />
-
-      <main className="px-4 py-4">
+          </div>
+        )}
         {!classId && classes.length > 0 && (
           <div className="mb-3 rounded-2xl bg-[var(--surface)] border border-[var(--outline-variant)] p-4">
             <p className="text-[15px] font-semibold tracking-tight text-[var(--on-surface)]">选择班级</p>
@@ -221,20 +215,21 @@ export default function History() {
 
         <Dialog open={exportConfirmOpen} onOpenChange={setExportConfirmOpen}>
           <DialogContent>
-            <DialogHeader className="text-center sm:text-center">
+            <DialogHeader className="text-center sm:text-center pb-2">
               <DialogTitle className="text-dialog-title text-[var(--on-surface)]">确认导出</DialogTitle>
               <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
                 将当前班级历史考勤导出为 Excel 文件，共 {list.length} 条记录。
               </DialogDescription>
             </DialogHeader>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setExportConfirmOpen(false)}>取消</Button>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setExportConfirmOpen(false)} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
               <Button
                 size="sm"
                 onClick={async () => {
                   setExportConfirmOpen(false)
                   await handleExport()
                 }}
+                className="h-8 min-h-0 px-2.5 text-[11px]"
               >
                 确认导出
               </Button>
@@ -245,19 +240,20 @@ export default function History() {
         {detailSnap && (
           <Dialog open={!!detailSnap} onOpenChange={(open) => !open && setDetailSnap(null)}>
             <DialogContent className="p-0">
-              <DialogHeader className="shrink-0 border-b border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-4 text-center sm:text-center">
+              <DialogHeader className="shrink-0 border-b border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-3 text-center sm:text-center">
                 <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">考勤报告</DialogTitle>
                 <DialogDescription className="text-caption text-[var(--on-surface-muted)]">{getReportDateLabelFromDate(detailSnap.date, detailSnap.period)}</DialogDescription>
               </DialogHeader>
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                <pre className="whitespace-pre-wrap font-mono text-label leading-relaxed text-[var(--on-surface)]">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+                <pre className="whitespace-pre-wrap font-mono text-[14px] leading-relaxed text-[var(--on-surface)]">
                   {buildReportTextFromSnapshot(currentClass?.name ?? '', detailSnap.date, detailSnap.period, detailSnap.statusMap, studentNames)}
                 </pre>
               </div>
-              <div className="shrink-0 flex justify-end gap-2 border-t border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-3">
-                <Button variant="outline" size="sm" onClick={() => setDetailSnap(null)}>关闭</Button>
+              <div className="shrink-0 flex justify-end gap-2 border-t border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-2">
+                <Button variant="outline" size="sm" onClick={() => setDetailSnap(null)} className="h-8 min-h-0 px-2.5 text-[11px]">关闭</Button>
                 <Button
                   size="sm"
+                  className="h-8 min-h-0 px-2.5 text-[11px]"
                   onClick={async () => {
                     const text = buildReportTextFromSnapshot(currentClass?.name ?? '', detailSnap.date, detailSnap.period, detailSnap.statusMap, studentNames)
                     try {

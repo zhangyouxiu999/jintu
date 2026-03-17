@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { School } from 'lucide-react'
 import { useClassList } from '@/hooks/useClassList'
-import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { animateStagger } from '@/lib/gsap'
 
@@ -11,7 +10,7 @@ export interface ClassPickerProps {
   basePath: string
 }
 
-export default function ClassPicker({ title, basePath }: ClassPickerProps) {
+export default function ClassPicker({ title: _title, basePath }: ClassPickerProps) {
   const navigate = useNavigate()
   const { list, loading } = useClassList()
   const listRef = useRef<HTMLDivElement>(null)
@@ -25,17 +24,14 @@ export default function ClassPicker({ title, basePath }: ClassPickerProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--bg)]">
-        <PageHeader title={title} />
-        <main className="flex min-h-[200px] items-center justify-center px-[var(--page-x)] py-12" aria-busy="true" />
+        <main className="flex min-h-[200px] items-center justify-center py-12" aria-busy="true" />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
-      <PageHeader title={title} />
-
-      <main className="px-[var(--page-x)] py-4">
+      <main className="py-4">
         {list.length === 0 ? (
           <div className="card-soft py-12 text-center">
             <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-[var(--radius-xl)] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary)]/20">
@@ -55,7 +51,7 @@ export default function ClassPicker({ title, basePath }: ClassPickerProps) {
             {list.map((cls) => (
               <div
                 key={cls.id}
-                className="card-soft flex min-h-12 w-full items-center gap-3 px-4 py-3 transition-shadow hover:shadow-elevation-2"
+                className="card-soft flex min-h-12 w-full items-center gap-3 px-4 py-3 transition-shadow"
               >
                 <button
                   type="button"

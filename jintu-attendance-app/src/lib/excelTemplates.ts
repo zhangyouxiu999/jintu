@@ -63,7 +63,6 @@ export const EXCEL_TEMPLATES: TemplateMeta[] = [
     name: '课程表模版',
     description: '第一行为周一～周日，第一列为节次（第一节课、第二节课…晚二），填写课程名称后可在课程表页导入。',
     fileName: '课程表导入模板.xlsx',
-    staticUrl: 'templates/课程表导入模板.xlsx',
     build: buildScheduleTemplate,
     sheetName: '课程表',
   },

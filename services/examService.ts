@@ -102,7 +102,7 @@ export class ExamService {
   static async updateExam(id: string, data: any) {
     const exam = await Exam.findByIdAndUpdate(
       id,
-      { ...data, updated_at: new Date() },
+      { $set: { ...data, updated_at: new Date() } },
       { new: true, runValidators: true }
     )
       .populate("class_id", "name")
@@ -126,4 +126,3 @@ export class ExamService {
     return exam;
   }
 }
-

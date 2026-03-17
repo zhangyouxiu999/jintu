@@ -1,23 +1,22 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { ClipboardCheck, School } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useCurrentClassId } from '@/components/AppLayout'
 import { useClassList } from '@/hooks/useClassList'
-import { storage } from '@/store/storage'
 
 export default function AttendanceEntry() {
   const navigate = useNavigate()
   const { list, loading } = useClassList()
-
-  const storedId = storage.loadCurrentClassId()
-  const currentClassId = list.find((item) => item.id === storedId)?.id ?? list[0]?.id ?? null
-  const currentClass = list.find((item) => item.id === currentClassId) ?? null
+  const { currentClassId } = useCurrentClassId()
+  const effectiveClassId = list.find((item) => item.id === currentClassId)?.id ?? list[0]?.id ?? null
+  const currentClass = list.find((item) => item.id === effectiveClassId) ?? null
 
   if (loading) {
     return <div className="min-h-[40vh]" aria-busy="true" />
   }
 
-  if (currentClassId) {
-    return <Navigate to={`/attendance/${currentClassId}`} replace />
+  if (effectiveClassId) {
+    return <Navigate to={`/attendance/${effectiveClassId}`} replace />
   }
 
   return (

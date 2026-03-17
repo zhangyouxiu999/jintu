@@ -49,12 +49,18 @@ export class GradeService {
         updateOne: {
           filter: { exam_id: examObjectId, student_id: g.student_id },
           update: {
-            score: sanitizedScore,
-            subjects: sanitizedSubjects,
-            remark: g.remark || "",
-            is_absent: !!g.is_absent,
-            student_no: g.student_no || undefined,
-            updated_at: new Date(),
+            $set: {
+              score: sanitizedScore,
+              subjects: sanitizedSubjects,
+              remark: g.remark || "",
+              is_absent: !!g.is_absent,
+              student_no: g.student_no || undefined,
+              updated_at: new Date(),
+            },
+            $setOnInsert: {
+              exam_id: examObjectId,
+              student_id: g.student_id,
+            },
           },
           upsert: true,
         },
@@ -79,4 +85,3 @@ export class GradeService {
     };
   }
 }
-

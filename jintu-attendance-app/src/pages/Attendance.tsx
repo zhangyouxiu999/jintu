@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   DndContext,
   pointerWithin,
@@ -26,6 +26,7 @@ import {
   X,
   Plus,
   List,
+  Keyboard,
 } from 'lucide-react'
 import { useClass } from '@/hooks/useClass'
 import { useAttendance } from '@/hooks/useAttendance'
@@ -34,9 +35,10 @@ import { useAttendanceStats } from '@/hooks/useAttendanceStats'
 import { useStudentImport } from '@/hooks/useStudentImport'
 import type { AttendanceStatus, AttendanceStatusMap } from '@/types'
 import { today } from '@/lib/date'
-import { PERIOD_NAMES } from '@/lib/period'
+import { PERIOD_NAMES, getCurrentResetSlot, getResetSlotLabel } from '@/lib/period'
 import { getReportDateLabel } from '@/lib/reportText'
 import { showToast } from '@/lib/toast'
+import { storage } from '@/store/storage'
 import { shareOrDownloadFile } from '@/lib/shareOrDownload'
 import { buildStudentListWorkbook } from '@/lib/exportClassExcel'
 import { cn } from '@/lib/utils'
@@ -66,6 +68,7 @@ import {
 export default function Attendance() {
   const { classId } = useParams<{ classId: string }>()
   const navigate = useNavigate()
+  const navigationType = useNavigationType()
   const {
     classEntity,
     students,
@@ -89,6 +92,7 @@ export default function Attendance() {
   const [announcementExpiry, setAnnouncementExpiry] = useState<import('@/types').AnnouncementExpirationType>('today')
   const [announcementSubmitting, setAnnouncementSubmitting] = useState(false)
 
+  const [addChoiceOpen, setAddChoiceOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [addName, setAddName] = useState('')
   const [addSubmitting, setAddSubmitting] = useState(false)
@@ -111,11 +115,13 @@ export default function Attendance() {
     import('@capacitor/core').then(({ Capacitor }) => setIsAndroid(Capacitor.getPlatform() === 'android')).catch(() => {})
   }, [])
 
+  // 仅在前进进入时做列表错落动画，从历史返回时跳过，避免抖动
   useEffect(() => {
     if (loading || students.length === 0) return
+    if (navigationType === 'POP') return
     const revert = animateStagger(studentListRef.current, ':scope > div')
     return revert
-  }, [loading, students.length])
+  }, [loading, students.length, navigationType])
 
   const period = getCurrentPeriodId()
 
@@ -167,25 +173,31 @@ export default function Attendance() {
     }
   }, [addOpen])
 
-  const lastPeriodCheckRef = useRef<{ classId: string; period: number } | null>(null)
+  // 按固定时间点（8:00 / 14:00 / 19:00）判断是否进入新时段；进入则按设置决定是否自动重置考勤
   useEffect(() => {
     if (!classId || students.length === 0) return
-    const prev = lastPeriodCheckRef.current
-    const periodChanged = prev === null || prev.classId !== classId || prev.period !== period
-    lastPeriodCheckRef.current = { classId, period }
     const dateStr = today()
-    const key = `last_period_${classId}_${dateStr}`
-    const last = sessionStorage.getItem(key)
-    const current = String(period)
-    if (periodChanged && last !== null && last !== current && period !== 3) {
-      if (typeof document !== 'undefined') {
-        const cleanupRef = { current: undefined as (() => void) | undefined }
-        cleanupRef.current = showToast(`已进入${PERIOD_NAMES[period]}时段，考勤已重置`, { duration: 3500 })
-        return () => cleanupRef.current?.()
-      }
+    const key = `last_reset_slot_${classId}_${dateStr}`
+    const currentSlot = getCurrentResetSlot()
+    const lastSlot = sessionStorage.getItem(key)
+    if (currentSlot === null || currentSlot === lastSlot) return
+    sessionStorage.setItem(key, currentSlot)
+    const label = getResetSlotLabel(currentSlot)
+    const autoReset = storage.loadAutoResetAttendance()
+    if (autoReset) {
+      const next = students.reduce<AttendanceStatusMap>((acc, s) => ({ ...acc, [s.id]: 0 }), {})
+      saveAllStatus(next).then(() => {
+        setAllAttendanceStatus(next)
+        showToast(`已进入${label}时段（${currentSlot}），考勤已重置`, { duration: 3500 })
+      }).catch(() => {
+        showToast('自动重置失败，请手动重置', { variant: 'error', duration: 2500 })
+      })
+    } else if (typeof document !== 'undefined') {
+      const cleanupRef = { current: undefined as (() => void) | undefined }
+      cleanupRef.current = showToast(`已进入${label}时段（${currentSlot}）`, { duration: 2500 })
+      return () => cleanupRef.current?.()
     }
-    sessionStorage.setItem(key, current)
-  }, [classId, period, students.length])
+  }, [classId, students.length, saveAllStatus, setAllAttendanceStatus])
 
   const handleStatus = useCallback(
     (studentId: string, status: AttendanceStatus) => {
@@ -305,7 +317,7 @@ export default function Attendance() {
         onSelect: handleExportStudentList,
       },
         extraActions: [
-          { id: 'attendance-add', label: '添加学生', icon: UserPlus, onSelect: () => setAddOpen(true) },
+          { id: 'attendance-add', label: '添加学生', icon: UserPlus, onSelect: () => setAddChoiceOpen(true) },
           { id: 'attendance-edit', label: showEditStudent ? '完成修改' : '修改学生', icon: Pencil, onSelect: () => setShowEditStudent((v) => !v) },
           { id: 'attendance-announcement', label: '添加公告', icon: Megaphone, onSelect: () => setAddAnnouncementOpen(true) },
           { id: 'attendance-all-present', label: '一键全勤', icon: CheckCircle, onSelect: handleMarkAllPresent },
@@ -397,16 +409,15 @@ export default function Attendance() {
       {/* 考勤报告弹窗 */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent>
-          <DialogHeader className="shrink-0 border-b border-[var(--outline-variant)] bg-[var(--surface)] px-5 py-4 text-center sm:text-center">
+          <DialogHeader className="shrink-0 border-b border-[var(--outline-variant)] bg-[var(--surface)] px-5 py-3 text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)]">考勤报告</DialogTitle>
-            <DialogDescription className="text-caption text-[var(--on-surface-muted)]">{getReportDateLabel(period)}</DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface)] px-5 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface)] px-5 py-3">
             <pre className="whitespace-pre-wrap font-mono text-[14px] leading-relaxed text-[var(--on-surface)]">{reportText}</pre>
           </div>
-          <DialogFooter className="shrink-0 flex justify-end gap-2 border-t border-[var(--outline-variant)] bg-[var(--surface)] px-5 py-3">
-            <Button variant="outline" size="sm" onClick={() => setReportOpen(false)} className="rounded-[var(--radius-sm)]">取消</Button>
-            <Button size="sm" onClick={handleConfirmReport} disabled={reportConfirming} className="rounded-[var(--radius-sm)]">
+          <DialogFooter className="shrink-0 flex justify-end gap-2 border-t border-[var(--outline-variant)] bg-[var(--surface)] px-5 py-2">
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(false)} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[10px]">取消</Button>
+            <Button size="sm" onClick={handleConfirmReport} disabled={reportConfirming} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[10px]">
               {reportConfirming ? <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />}
               {reportConfirming ? '保存中…' : '复制并分享'}
             </Button>
@@ -414,23 +425,58 @@ export default function Attendance() {
         </DialogContent>
       </Dialog>
 
+      {/* 添加学生方式选择 */}
+      <Dialog open={addChoiceOpen} onOpenChange={setAddChoiceOpen}>
+        <DialogContent className="sm:max-w-[280px] [&_button]:text-[10px]">
+          <DialogHeader className="text-center sm:text-center pb-2">
+            <DialogTitle className="text-[16px] font-semibold leading-tight text-[var(--on-surface)]">添加学生</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 py-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col gap-1.5 rounded-[var(--radius-sm)] py-3 font-medium"
+              onClick={() => {
+                setAddChoiceOpen(false)
+                setAddOpen(true)
+              }}
+            >
+              <Keyboard className="h-4 w-4 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
+              <span>输入</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col gap-1.5 rounded-[var(--radius-sm)] py-3 font-medium"
+              onClick={() => {
+                setAddChoiceOpen(false)
+                setImportOpen(true)
+              }}
+            >
+              <Upload className="h-4 w-4 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
+              <span>导入</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* 添加学生弹窗 */}
       <Dialog open={addOpen} onOpenChange={handleCloseAddDialog}>
-        <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="text-dialog-title text-[var(--on-surface)]">添加学生</DialogTitle>
+        <DialogContent className="[&_button]:text-[10px]">
+          <DialogHeader className="text-center sm:text-center pb-2">
+            <DialogTitle className="text-[16px] font-semibold leading-tight text-[var(--on-surface)]">添加学生</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">填写姓名，可连续添加多个</DialogDescription>
           </DialogHeader>
-          <div className="py-3">
+          <div className="py-1">
             <div className="flex gap-2">
-              <Input ref={addNameInputRef} placeholder="姓名" value={addName} onChange={(e) => setAddName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddStudent())} autoFocus className="h-10 flex-1 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] text-[15px]" />
-              <Button type="button" size="sm" onClick={handleAddStudent} onMouseDown={(e) => e.preventDefault()} disabled={!addName.trim() || addSubmitting} className="h-10 shrink-0 rounded-[var(--radius-sm)]">{addSubmitting ? '…' : '添加'}</Button>
+              <Input ref={addNameInputRef} placeholder="姓名" value={addName} onChange={(e) => setAddName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddStudent())} autoFocus className="h-8 min-h-0 flex-1 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] text-[14px]" />
+              <Button type="button" size="sm" onClick={handleAddStudent} onMouseDown={(e) => e.preventDefault()} disabled={!addName.trim() || addSubmitting} className="h-8 min-h-0 shrink-0 rounded-[var(--radius-sm)] px-2.5">{addSubmitting ? '…' : '添加'}</Button>
             </div>
           </div>
           {addedNamesInSession.length > 0 && (
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-[var(--radius-md)] bg-[var(--surface-2)] px-4 py-3">
-              <p className="mb-2 text-caption font-medium text-[var(--on-surface-muted)]">本批已添加（{addedNamesInSession.length} 人）</p>
-              <ul className="space-y-1.5">
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-[var(--radius-sm)] bg-[var(--surface-2)] px-3 py-2">
+              <p className="mb-1.5 text-caption font-medium text-[var(--on-surface-muted)]">本批已添加（{addedNamesInSession.length} 人）</p>
+              <ul className="space-y-1">
                 {addedNamesInSession.map((name, i) => (
                   <li key={`${i}-${name}`} className="flex items-center gap-2 text-[14px] text-[var(--on-surface)]">
                     <span className="w-5 shrink-0 tabular-nums text-[var(--on-surface-muted)]">{i + 1}.</span>
@@ -441,7 +487,7 @@ export default function Attendance() {
             </div>
           )}
           <div className="mt-4 flex justify-end">
-            <Button type="button" size="sm" onClick={() => handleCloseAddDialog(false)} className="rounded-[var(--radius-sm)]">完成</Button>
+            <Button type="button" size="sm" onClick={() => handleCloseAddDialog(false)} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5">完成</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -449,16 +495,16 @@ export default function Attendance() {
       {/* 导入学生弹窗 */}
       <Dialog open={importOpen} onOpenChange={(open) => { if (!open) resetImport() }}>
         <DialogContent className="max-h-[min(70vh,75dvh)]">
-          <DialogHeader className="shrink-0 text-center sm:text-center">
+          <DialogHeader className="shrink-0 text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)]">导入学生</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">每行一个姓名，可粘贴或选择 txt/csv/Excel 文件（Excel 取第一列）</DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 py-3 flex flex-col gap-2">
+          <div className="min-h-0 flex-1 py-2 flex flex-col gap-2">
             <textarea
               placeholder={'张三\n李四\n王五'}
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              className="min-h-[100px] w-full max-h-[40vh] resize-y rounded-[var(--radius-md)] border border-[var(--outline)] bg-[var(--surface-2)] px-4 py-3 text-[14px] text-[var(--on-surface)] placeholder:text-[var(--on-surface-muted)] outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+              className="min-h-[100px] w-full max-h-[40vh] resize-y rounded-[var(--radius-sm)] border border-[var(--outline)] bg-[var(--surface-2)] px-3 py-2 text-[14px] text-[var(--on-surface)] placeholder:text-[var(--on-surface-muted)] outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
               rows={4}
             />
             <input
@@ -468,14 +514,14 @@ export default function Attendance() {
               className="hidden"
               onChange={handleImportFileChange}
             />
-            <Button type="button" variant="outline" size="sm" className="w-full shrink-0 rounded-[var(--radius-sm)]" onClick={() => importFileInputRef.current?.click()}>
+            <Button type="button" variant="outline" size="sm" className="h-8 min-h-0 w-full shrink-0 rounded-[var(--radius-sm)] px-2.5 text-[10px]" onClick={() => importFileInputRef.current?.click()}>
               <Upload className="mr-2 h-3.5 w-3.5" />
               选择文件
             </Button>
           </div>
           <div className="mt-2 shrink-0 flex justify-end gap-2 pb-[env(safe-area-inset-bottom)]">
-            <Button type="button" variant="outline" size="sm" onClick={resetImport} className="rounded-[var(--radius-sm)]">取消</Button>
-            <Button size="sm" onClick={handleImportStudents} disabled={!importText.trim() || importSubmitting} className="rounded-[var(--radius-sm)]">
+            <Button type="button" variant="outline" size="sm" onClick={resetImport} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[10px]">取消</Button>
+            <Button size="sm" onClick={handleImportStudents} disabled={!importText.trim() || importSubmitting} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[10px]">
               {importSubmitting ? '导入中…' : `导入（${parseImportNames(importText).length} 人）`}
             </Button>
           </div>
@@ -485,16 +531,16 @@ export default function Attendance() {
       {/* 编辑学生弹窗 */}
       <Dialog open={!!editStudentId} onOpenChange={(open) => { if (!open) { setEditStudentId(null); setEditName('') } }}>
         <DialogContent>
-          <DialogHeader className="text-center sm:text-center">
+          <DialogHeader className="text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)]">编辑学生</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">修改姓名</DialogDescription>
           </DialogHeader>
-          <div className="py-3">
-            <Input placeholder="姓名" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSaveEditStudent()} autoFocus className="h-11 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] text-[15px]" />
+          <div className="py-1">
+            <Input placeholder="姓名" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSaveEditStudent()} autoFocus className="h-8 min-h-0 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] text-[14px]" />
           </div>
-          <div className="mt-2 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setEditStudentId(null); setEditName('') }} className="rounded-[var(--radius-sm)]">取消</Button>
-            <Button size="sm" onClick={handleSaveEditStudent} disabled={!editName.trim()} className="rounded-[var(--radius-sm)]">保存</Button>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setEditStudentId(null); setEditName('') }} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[10px]">取消</Button>
+            <Button size="sm" onClick={handleSaveEditStudent} disabled={!editName.trim()} className="h-8 min-h-0 rounded-[var(--radius-sm)] px-2.5 text-[10px]">保存</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -506,9 +552,9 @@ export default function Attendance() {
             <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">确定重置考勤？</AlertDialogTitle>
             <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)]">所有学生状态将重设为「未到」。</AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="mt-4 flex justify-end gap-2 [&_button]:text-[10px]">
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleReset}>确定重置</AlertDialogAction>
+            <AlertDialogAction onClick={handleReset}>确定重置</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
@@ -520,9 +566,9 @@ export default function Attendance() {
             <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">确定删除该学生？</AlertDialogTitle>
             <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)]">删除后不可恢复。</AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="mt-4 flex justify-end gap-2 [&_button]:text-[10px]">
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteStudent}>删除</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmDeleteStudent}>删除</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
@@ -530,11 +576,11 @@ export default function Attendance() {
       {/* 添加公告 Dialog */}
       <Dialog open={addAnnouncementOpen} onOpenChange={handleAddAnnouncementDialogClose}>
         <DialogContent className="max-h-[min(56vh,50dvh)]">
-          <DialogHeader className="shrink-0 text-center sm:text-center">
+          <DialogHeader className="shrink-0 text-center sm:text-center pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)]">添加公告</DialogTitle>
             <DialogDescription className="text-caption text-[var(--on-surface-muted)]">可添加多条，将在点名页顶部显示</DialogDescription>
           </DialogHeader>
-          <div className="py-3 space-y-2 min-h-0 flex-1 overflow-y-auto">
+          <div className="py-1 space-y-2 min-h-0 flex-1 overflow-y-auto">
             {announcementRows.map((value, index) => (
               <div key={index} className="flex gap-2 items-center">
                 <Input
@@ -542,14 +588,14 @@ export default function Attendance() {
                   value={value}
                   onChange={(e) => setAnnouncementRow(index, e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAnnouncementRow())}
-                  className="h-11 flex-1 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] text-[15px] placeholder:text-[var(--on-surface-muted)] focus-visible:ring-1 focus-visible:ring-[var(--primary)]/30"
+                  className="h-8 min-h-0 flex-1 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface-2)] text-[14px] placeholder:text-[var(--on-surface-muted)] focus-visible:ring-1 focus-visible:ring-[var(--primary)]/30"
                 />
                 {announcementRows.length > 1 ? (
                   <button
                     type="button"
                     onClick={() => removeAnnouncementRow(index)}
                     aria-label="删除本条"
-                    className="h-11 w-11 shrink-0 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--on-surface-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--on-surface)] transition-colors"
+                    className="h-8 w-8 shrink-0 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--on-surface-muted)] transition-colors"
                   >
                     <X className="h-5 w-5" strokeWidth={1.5} />
                   </button>
@@ -561,9 +607,9 @@ export default function Attendance() {
               variant="outline"
               size="sm"
               onClick={addAnnouncementRow}
-              className="w-full rounded-[var(--radius-sm)] border-dashed text-caption text-[var(--on-surface-muted)] hover:bg-[var(--surface-2)] hover:border-[var(--outline)]"
+              className="!h-8 !min-h-0 w-full rounded-[var(--radius-sm)] border-dashed px-2.5 !text-[11px] text-[var(--on-surface-muted)] [&_svg]:!size-3.5"
             >
-              <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.5} />
+              <Plus className="mr-1" strokeWidth={1.5} />
               添加一条
             </Button>
           </div>
@@ -574,7 +620,7 @@ export default function Attendance() {
                 key={t}
                 type="button"
                 onClick={() => setAnnouncementExpiry(t)}
-                className={`flex-1 rounded-[9px] py-2 text-[13px] font-semibold transition-all duration-150 ${
+                className={`flex-1 rounded-[9px] py-1.5 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-100 ease-out ${
                   announcementExpiry === t
                     ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-[0_1px_4px_rgba(0,0,0,0.08)]'
                     : 'text-[var(--on-surface-muted)]'
@@ -585,14 +631,14 @@ export default function Attendance() {
             ))}
           </div>
           <div className="mt-4 flex shrink-0 justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={handleAddAnnouncementCancelClick} className="rounded-[var(--radius-sm)]">取消</Button>
+            <Button variant="outline" size="sm" onClick={handleAddAnnouncementCancelClick} className="!h-8 !min-h-0 rounded-[var(--radius-sm)] px-2.5 !text-[10px]">取消</Button>
             <Button
               size="sm"
               disabled={!announcementRows.some((r) => r.trim()) || announcementSubmitting}
               onClick={handlePublishAnnouncement}
-              className="rounded-[var(--radius-sm)] disabled:opacity-40"
+              className="!h-8 !min-h-0 rounded-[var(--radius-sm)] px-2.5 !text-[10px] disabled:opacity-40 [&_svg]:!size-3.5"
             >
-              <Send className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
+              <Send className="mr-1" strokeWidth={1.5} />
               发布
             </Button>
           </div>
@@ -602,20 +648,21 @@ export default function Attendance() {
       {/* 添加公告 - 取消确认 */}
       <AlertDialog open={addAnnouncementCancelConfirmOpen} onOpenChange={setAddAnnouncementCancelConfirmOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] text-center">放弃当前内容？</AlertDialogTitle>
-            <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)] text-center">未发布的公告将不会保存</AlertDialogDescription>
+          <AlertDialogHeader className="text-center sm:text-center">
+            <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">放弃当前内容？</AlertDialogTitle>
+            <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)] block text-center">未发布的公告将不会保存</AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-5 flex justify-center gap-3">
+          <div className="mt-4 flex justify-center gap-2 [&_button]:text-[10px]">
             <AlertDialogCancel>再想想</AlertDialogCancel>
             <AlertDialogAction onClick={confirmAddAnnouncementCancel}>确定放弃</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 统计与控制：一张卡片，头部行 + 公告内容区（展开为浮层，不占文档流） */}
+      {/* 统计卡片 + 列表：列表区域默认撑满一屏 */}
+      <div className="flex min-h-0 flex-1 flex-col">
       <div
-        className="sticky z-20 mb-2 overflow-visible transition-shadow duration-200"
+        className="sticky z-20 mb-2 shrink-0 overflow-visible transition-shadow duration-200"
         style={{ top: 'var(--space-12, 12px)' }}
       >
         {/* 头部行：时段 + 统计 + 公告按钮（收起时用透明 border-b 占位，避免展开/收起时高度变化导致列表位移） */}
@@ -790,25 +837,23 @@ export default function Attendance() {
 
       {/* 学生列表 */}
       {students.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[24px] bg-[var(--surface)] py-16 shadow-[0_1px_0_rgba(60,60,67,0.06)]">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-[24px] bg-[var(--surface)] py-16 shadow-[0_1px_0_rgba(60,60,67,0.06)]">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[20px] bg-[var(--surface-2)] text-[var(--on-surface-muted)]">
             <Users className="h-8 w-8" strokeWidth={1.5} />
           </div>
-          <p className="text-[17px] font-semibold tracking-tight text-[var(--on-surface)]">暂无学生</p>
-          <p className="mt-1 text-[14px] text-[var(--on-surface-muted)]">请添加学生以开始点名</p>
           <Button
-            className="mt-6 h-11 rounded-[var(--radius-md)] px-6 text-[15px] font-semibold active:scale-[0.96] active:opacity-90"
-            onClick={() => setAddOpen(true)}
+            className="mt-6 h-9 rounded-[var(--radius-md)] px-4 text-[13px] font-medium active:scale-[0.96] active:opacity-90"
+            onClick={() => setAddChoiceOpen(true)}
           >
-            <UserPlus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            <UserPlus className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
             添加学生
           </Button>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
           <SortableContext items={students.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-            <div className="overflow-hidden rounded-[24px] bg-[var(--surface)] shadow-[0_1px_0_rgba(60,60,67,0.06)]">
-              <div ref={studentListRef} className="divide-y divide-[var(--outline-variant)]">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[var(--surface)] shadow-[0_1px_0_rgba(60,60,67,0.06)]">
+              <div ref={studentListRef} className="min-h-0 flex-1 overflow-y-auto divide-y divide-[var(--outline-variant)]">
                 {!oneColumn && (
                   <div className="flex items-center gap-2 px-5 py-2">
                     <div className="h-2.5 w-0.5 shrink-0 rounded-full bg-[var(--outline)]" />
@@ -878,6 +923,7 @@ export default function Attendance() {
           </SortableContext>
         </DndContext>
       )}
+      </div>
     </>
   )
 }

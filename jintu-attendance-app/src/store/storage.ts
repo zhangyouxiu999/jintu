@@ -25,6 +25,8 @@ export const STORAGE_KEYS = {
   schedule: PREFIX + 'schedule',
   grades: PREFIX + 'grades',
   currentClassId: PREFIX + 'current_class_id',
+  currentPeriodIdByClass: PREFIX + 'current_period_id_by_class',
+  autoResetAttendance: PREFIX + 'auto_reset_attendance',
 } as const
 
 function save(key: string, data: unknown): void {
@@ -135,5 +137,21 @@ export const storage = {
   },
   loadCurrentClassId(): string | null {
     return load<string>(STORAGE_KEYS.currentClassId)
+  },
+
+  saveCurrentPeriodId(classId: string, periodId: string) {
+    const map = load<Record<string, string>>(STORAGE_KEYS.currentPeriodIdByClass) ?? {}
+    save(STORAGE_KEYS.currentPeriodIdByClass, { ...map, [classId]: periodId })
+  },
+  loadCurrentPeriodId(classId: string): string | null {
+    const map = load<Record<string, string>>(STORAGE_KEYS.currentPeriodIdByClass)
+    return map?.[classId] ?? null
+  },
+
+  saveAutoResetAttendance(enabled: boolean) {
+    save(STORAGE_KEYS.autoResetAttendance, enabled)
+  },
+  loadAutoResetAttendance(): boolean {
+    return load<boolean>(STORAGE_KEYS.autoResetAttendance) === true
   },
 }

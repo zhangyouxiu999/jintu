@@ -1,0 +1,26 @@
+---
+description: Radix UI 与 Tailwind CSS 组件实现规范
+globs: "src/**/*.{tsx,ts}"
+alwaysApply: false
+---
+
+# UI Skill
+
+- 优先基于 Radix UI 原语构建交互组件，不重复造弹层、对话框、下拉菜单、手风琴等基础行为。
+- 视觉实现优先使用 Tailwind CSS，保持类名清晰、分组合理，不把大量魔法值散落在组件里。
+- 类名合并统一使用 `clsx` + `tailwind-merge` 或项目中的 `cn` 工具，避免条件类冲突。
+- 组件 API 应保持语义化，优先支持 `className`、`children`、受控/非受控两种合理模式。
+- 封装业务组件时保留 Radix 的可访问性能力，如焦点管理、键盘交互和 ARIA 语义。
+- 新组件应兼顾移动端点击区域、滚动容器和深浅层级，不做只适合桌面的交互假设。
+- 能通过组合现有 UI 组件解决的问题，不新增重复外观或重复行为组件。
+- 图标统一优先使用 `lucide-react`，状态色和间距尽量复用既有设计语言。
+
+```tsx
+// preferred
+import * as Dialog from "@radix-ui/react-dialog";
+import { cn } from "@/lib/utils";
+
+export function ExampleDialog({ className }: { className?: string }) {
+  return <Dialog.Content className={cn("rounded-xl p-4 shadow-lg", className)} />;
+}
+```

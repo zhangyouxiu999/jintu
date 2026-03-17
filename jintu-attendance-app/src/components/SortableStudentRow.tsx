@@ -79,12 +79,12 @@ function SortableStudentRow({
     }
   }
 
-  // 行背景：状态对应极淡色
+  // 行背景：状态对应极淡色（晚到用 primary 蓝 0.04，与已到/请假同写法避免透明度不生效）
   const getRowBg = () => {
     switch (student.attendanceStatus) {
       case 1: return 'bg-[rgba(52,199,89,0.04)]'
       case 2: return 'bg-[rgba(255,159,10,0.04)]'
-      case 3: return 'bg-[var(--primary)]/[0.04]'
+      case 3: return 'bg-[rgba(0,122,255,0.04)]'
       default: return 'bg-white'
     }
   }

@@ -46,7 +46,20 @@ export async function POST(request: NextRequest) {
       const operations = records.map((r: any) => ({
         updateOne: {
           filter: { type: r.type, target_id: r.target_id, date: r.date },
-          update: { ...r, updated_at: new Date() },
+          update: {
+            $set: {
+              status_morning: r.status_morning,
+              status_afternoon: r.status_afternoon,
+              status_evening: r.status_evening,
+              custom_data: r.custom_data,
+              updated_at: new Date(),
+            },
+            $setOnInsert: {
+              type: r.type,
+              target_id: r.target_id,
+              date: r.date,
+            },
+          },
           upsert: true,
         },
       }));
@@ -65,11 +78,14 @@ export async function POST(request: NextRequest) {
     const record = await CustomAttendance.findOneAndUpdate(
       { type, target_id, date },
       {
-        status_morning,
-        status_afternoon,
-        status_evening,
-        custom_data,
-        updated_at: new Date(),
+        $set: {
+          status_morning,
+          status_afternoon,
+          status_evening,
+          custom_data,
+          updated_at: new Date(),
+        },
+        $setOnInsert: { type, target_id, date },
       },
       { upsert: true, new: true }
     );

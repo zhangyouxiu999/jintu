@@ -1,22 +1,22 @@
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import { Home, CalendarDays, Award, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCurrentClassId } from '@/components/AppLayout'
 import { useClassList } from '@/hooks/useClassList'
-import { storage } from '@/store/storage'
 
 export default function BottomNav() {
   const location = useLocation()
   const { list } = useClassList()
-  const storedId = storage.loadCurrentClassId()
-  const currentClassId = list.find((c) => c.id === storedId)?.id ?? list[0]?.id
+  const { currentClassId } = useCurrentClassId()
+  const effectiveClassId = list.find((c) => c.id === currentClassId)?.id ?? list[0]?.id
   const pathname = location.pathname
   const isHomeActive =
-    pathname === '/' || (!!currentClassId && pathname === `/attendance/${currentClassId}`)
+    pathname === '/' || (!!effectiveClassId && pathname === `/attendance/${effectiveClassId}`)
   const isScheduleActive = pathname.startsWith('/schedule')
   const isGradesActive = pathname.startsWith('/grades')
 
-  const scheduleTo = currentClassId ? `/schedule/${currentClassId}` : '/schedule'
-  const gradesTo = currentClassId ? `/grades/${currentClassId}` : '/grades'
+  const scheduleTo = effectiveClassId ? `/schedule/${effectiveClassId}` : '/schedule'
+  const gradesTo = effectiveClassId ? `/grades/${effectiveClassId}` : '/grades'
 
   return (
     <nav

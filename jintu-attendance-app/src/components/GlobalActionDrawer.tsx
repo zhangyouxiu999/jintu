@@ -9,6 +9,8 @@ export interface GlobalActionItem {
   onSelect?: () => void
   disabled?: boolean
   destructive?: boolean
+  /** 子菜单项，存在时该项为可展开二级 */
+  children?: GlobalActionItem[]
 }
 
 export interface GlobalActionConfig {
@@ -85,10 +87,10 @@ export default function GlobalActionDrawer({
         <div className="mx-auto mt-[10px] h-[5px] w-9 rounded-full bg-[var(--outline-variant)]" />
 
         <DialogHeader className="px-5 pb-1 pt-4 text-left">
-          <DialogTitle className="text-[17px] font-semibold tracking-tight text-[var(--on-surface)]">
+          <DialogTitle className="text-dialog-title text-[var(--on-surface)]">
             {title}
           </DialogTitle>
-          <DialogDescription className="text-[12px] text-[var(--on-surface-muted)]">
+          <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
             导入、导出和当前页面的专属操作
           </DialogDescription>
         </DialogHeader>

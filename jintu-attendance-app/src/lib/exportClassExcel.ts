@@ -178,6 +178,53 @@ export async function buildClassExportWorkbook(data: ExportClassData): Promise<A
   return buf as ArrayBuffer
 }
 
+/** 仅导出课程表（与模板库课程表样式一致：标题合并、午休/晚饭行合并、列宽、字号 24/20），用于课表页「导出课程表」 */
+export async function buildScheduleOnlyWorkbook(
+  className: string,
+  scheduleData: ScheduleCellMap
+): Promise<ArrayBuffer> {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('课程表', { views: [{ state: 'frozen', ySplit: 2 }] })
+  ws.addRow([`${className}类课程表`])
+  ws.addRow(['', ...WEEKDAY_NAMES_TEMPLATE])
+  for (const label of SCHEDULE_ROW_LABELS) {
+    const key = ROW_LABEL_TO_PERIOD[label] ?? label
+    const row = [label, ...WEEKDAY_NAMES_TEMPLATE.map((day) => scheduleData[`${day}_${key}`] ?? '')]
+    ws.addRow(row)
+  }
+  styleScheduleSheet(ws)
+  const buf = await wb.xlsx.writeBuffer()
+  return buf as ArrayBuffer
+}
+
+/** 仅导出成绩单（一期或全部），用于成绩页「导出成绩单」 */
+export async function buildGradesOnlyWorkbook(
+  className: string,
+  periods: GradesPeriod[],
+  sortedStudents: Array<{ id: string; name: string }>
+): Promise<ArrayBuffer> {
+  const wb = new ExcelJS.Workbook()
+  for (const period of periods) {
+    const sheetName = `成绩-${period.name}`.slice(0, 31)
+    const wsGrade = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 2 }] })
+    const gradeColCount = 2 + period.subjects.length + 2
+    wsGrade.addRow([`${className}  ${period.name}`])
+    wsGrade.addRow(['序号', '姓名', ...period.subjects, '总分', '备注'])
+    sortedStudents.forEach((s, i) => {
+      const scoreRow = period.scores[s.id]
+      const vals = period.subjects.map((sub) => scoreRow?.[sub] ?? '')
+      const nums = vals
+        .map((v) => (typeof v === 'string' ? parseFloat(String(v).replace(/\s/g, '')) : Number(v)))
+        .filter((n) => !Number.isNaN(n))
+      const total = nums.length > 0 ? String(nums.reduce((a, b) => a + b, 0)) : ''
+      wsGrade.addRow([i + 1, s.name, ...vals, total, ''])
+    })
+    styleGradeSheet(wsGrade, gradeColCount)
+  }
+  const buf = await wb.xlsx.writeBuffer()
+  return buf as ArrayBuffer
+}
+
 /** 仅导出学生名单（序号、姓名），用于「导出学生名单」功能 */
 export async function buildStudentListWorkbook(
   _className: string,
