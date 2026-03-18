@@ -9,7 +9,7 @@ export interface ClassPickerProps {
   basePath: string
 }
 
-export default function ClassPicker({ title: _title, basePath }: ClassPickerProps) {
+export default function ClassPicker({ title, basePath }: ClassPickerProps) {
   const navigate = useNavigate()
   const { list, loading } = useClassList()
   const listRef = useRef<HTMLDivElement>(null)
@@ -25,8 +25,12 @@ export default function ClassPicker({ title: _title, basePath }: ClassPickerProp
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <main className="py-4">
+        <div className="mb-4 px-[var(--page-x)]">
+          <h2 className="text-title text-[var(--on-surface)] tracking-tight">{title}</h2>
+          <p className="mt-1 text-[13px] text-[var(--on-surface-muted)]">请选择要查看的班级</p>
+        </div>
         {list.length === 0 ? (
-          <div className="card-soft py-12 text-center">
+          <div className="card-soft mx-[var(--page-x)] py-12 text-center">
             <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-[var(--radius-xl)] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary)]/20">
               <School className="h-12 w-12 text-[var(--primary)]" />
             </div>
@@ -40,7 +44,7 @@ export default function ClassPicker({ title: _title, basePath }: ClassPickerProp
             </Button>
           </div>
         ) : (
-          <div ref={listRef} className="space-y-3">
+          <div ref={listRef} className="space-y-3 px-[var(--page-x)]">
             {list.map((cls) => (
               <div
                 key={cls.id}

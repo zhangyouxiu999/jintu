@@ -49,9 +49,9 @@ export default function AttendanceEntry() {
 
         <Button
           className="mt-5 h-12 w-full rounded-[16px] bg-[var(--primary)] text-[16px] font-semibold text-white"
-          onClick={() => navigate('/settings')}
+          onClick={() => navigate('/classes')}
         >
-          去我的页面设置班级
+          去班级管理新增班级
         </Button>
       </div>
     </section>

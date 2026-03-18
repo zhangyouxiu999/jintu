@@ -1,5 +1,5 @@
 import { BookOpen, Check, ClipboardCheck, FileDown, FileUp, GraduationCap, LayoutGrid, UserCircle2, type LucideIcon } from 'lucide-react'
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
+import { createContext, forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { type GlobalActionConfig } from '@/components/GlobalActionDrawer'
@@ -20,6 +20,63 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 const Settings = lazy(() => import('@/pages/Settings'))
+
+/** 预加载 Settings  chunk，打开「我的」时减少首屏卡顿 */
+function prefetchSettings() {
+  import('@/pages/Settings').catch(() => {})
+}
+
+const DRAWER_ANIMATION_MS = 320
+
+/** 「我的」抽屉：状态独立，开/关只重渲染本组件，避免整棵 AppLayout 重渲染造成 1s 停顿；关闭后延迟卸载内容以让动画先跑完 */
+interface SettingsDrawerWrapperRef { openDrawer: () => void; close: () => void }
+interface SettingsDrawerWrapperProps { onOpenSync?: (open: boolean) => void }
+const SettingsDrawerWrapper = forwardRef<SettingsDrawerWrapperRef, SettingsDrawerWrapperProps>(function SettingsDrawerWrapper({ onOpenSync }, ref) {
+  const [open, setOpen] = useState(false)
+  const [contentMounted, setContentMounted] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    openDrawer: () => setOpen(true),
+    close: () => setOpen(false),
+  }), [])
+
+  // 打开时：下一帧再挂载 Settings，让抽屉先开动再加载重内容
+  useEffect(() => {
+    if (!open) return
+    const id = requestAnimationFrame(() => setContentMounted(true))
+    return () => cancelAnimationFrame(id)
+  }, [open])
+
+  // 关闭时：动画播完后再卸载内容，避免同步卸载阻塞主线程
+  useEffect(() => {
+    if (open || !contentMounted) return
+    const t = setTimeout(() => setContentMounted(false), DRAWER_ANIMATION_MS)
+    return () => clearTimeout(t)
+  }, [open, contentMounted])
+
+  const handleOpenChange = useCallback((next: boolean) => {
+    setOpen(next)
+    onOpenSync?.(next)
+  }, [onOpenSync])
+
+  const showContent = open || contentMounted
+
+  return (
+    <Drawer open={open} onOpenChange={handleOpenChange} shouldScaleBackground={false}>
+      <DrawerContentWithHeader showCloseButton onClose={() => setOpen(false)}>
+        {showContent ? (
+          contentMounted ? (
+            <Suspense fallback={<div className="flex min-h-[200px] items-center justify-center text-[var(--on-surface-muted)]">加载中…</div>}>
+              <Settings />
+            </Suspense>
+          ) : (
+            <div className="flex min-h-[200px] items-center justify-center text-[var(--on-surface-muted)]">加载中…</div>
+          )
+        ) : null}
+      </DrawerContentWithHeader>
+    </Drawer>
+  )
+})
 
 export interface AppLayoutContextValue {
   pageTitle: string
@@ -115,7 +172,7 @@ export default function AppLayout() {
   const { list } = useClassList()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [settingsSheetOpen, setSettingsSheetOpen] = useState(false)
+  const settingsDrawerRef = useRef<SettingsDrawerWrapperRef>(null)
   const [pageTitle, setPageTitle] = useState(getDefaultPageTitle(location.pathname))
   const [pageActions, setPageActions] = useState<GlobalActionConfig>({})
   const [currentClassId, setCurrentClassIdState] = useState<string | null>(() => storage.loadCurrentClassId())
@@ -145,20 +202,30 @@ export default function AppLayout() {
     setPageActions({})
   }, [location.pathname])
 
+  /* 进入主布局后预加载「我的」页，打开抽屉时减少 1s+ 卡顿 */
+  useEffect(() => {
+    const t = setTimeout(prefetchSettings, 800)
+    return () => clearTimeout(t)
+  }, [])
+
   // 仅当 pathname 发生变化（用户从抽屉内跳转）且新页面不是 /settings 时关闭抽屉；切换班级（同一 tab 下仅 classId 变化）时不关闭
   const prevPathnameRef = useRef(location.pathname)
+  const settingsDrawerOpenRef = useRef(false)
   useEffect(() => {
     const prev = prevPathnameRef.current
     const curr = location.pathname
     if (prev === curr) return
     prevPathnameRef.current = curr
-    if (!settingsSheetOpen || curr === '/settings') return
+    if (!settingsDrawerOpenRef.current || curr === '/settings') return
     const prevBase = prev.replace(/\/[^/]+$/, '') || prev
     const currBase = curr.replace(/\/[^/]+$/, '') || curr
     const isClassSwitchOnly = prevBase === currBase && (prev.startsWith('/attendance') || prev.startsWith('/grades') || prev.startsWith('/schedule'))
     if (isClassSwitchOnly) return
-    setSettingsSheetOpen(false)
-  }, [location.pathname, settingsSheetOpen])
+    settingsDrawerRef.current?.close()
+  }, [location.pathname])
+  const handleSettingsDrawerOpenSync = useCallback((open: boolean) => {
+    settingsDrawerOpenRef.current = open
+  }, [])
 
   const effectiveClassId = list.find((item) => item.id === currentClassId)?.id ?? list[0]?.id ?? null
   const currentClass = list.find((item) => item.id === effectiveClassId) ?? null
@@ -209,7 +276,7 @@ export default function AppLayout() {
 
   const currentClassContextValue = useMemo<CurrentClassContextValue>(
     () => ({ currentClassId, setCurrentClassId }),
-    [currentClassId]
+    [currentClassId, setCurrentClassId]
   )
 
   return (
@@ -227,7 +294,7 @@ export default function AppLayout() {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => setSettingsSheetOpen(true)}
+              onClick={() => settingsDrawerRef.current?.openDrawer()}
               className="ml-3 h-11 w-11 shrink-0 rounded-full text-[var(--primary)] [&_svg]:!h-8 [&_svg]:!w-8"
               aria-label="打开我的"
             >
@@ -243,17 +310,8 @@ export default function AppLayout() {
           </div>
         </main>
 
-        {/* 我的：Vaul Drawer，支持下滑关闭手势；关闭背景缩放以减轻 Android 卡顿 */}
-        <Drawer open={settingsSheetOpen} onOpenChange={setSettingsSheetOpen} shouldScaleBackground={false}>
-          <DrawerContentWithHeader
-            showCloseButton
-            onClose={() => setSettingsSheetOpen(false)}
-          >
-            <Suspense fallback={<div className="flex min-h-[200px] items-center justify-center text-[var(--on-surface-muted)]">加载中…</div>}>
-              <Settings />
-            </Suspense>
-          </DrawerContentWithHeader>
-        </Drawer>
+        {/* 我的：状态在 SettingsDrawerWrapper 内，开/关只重渲染该组件；关闭后延迟卸载内容，避免停顿 */}
+        <SettingsDrawerWrapper ref={settingsDrawerRef} onOpenSync={handleSettingsDrawerOpenSync} />
 
         {/* 底部 Dock 通过 Portal 挂到 body，跳出 GSAP 动画容器，避免随页面淡出 */}
         {createPortal(

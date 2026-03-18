@@ -178,6 +178,18 @@
   contain-intrinsic-size: auto 120px;
 }
 
+/* 「我的」抽屉：开/关动画时长（略短于 vaul 默认 0.5s，兼顾流畅与反馈） */
+[data-vaul-drawer] {
+  transition-duration: 0.32s !important;
+  animation-duration: 0.32s !important;
+}
+[data-vaul-overlay][data-vaul-snap-points='false'] {
+  animation-duration: 0.32s !important;
+}
+[data-vaul-overlay][data-vaul-snap-points='true'] {
+  transition-duration: 0.32s !important;
+}
+
 /* 横向滚动隐藏滚动条（周历等） */
 .hide-scrollbar { scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -286,7 +298,51 @@
 /* 深色模式预留：仅覆盖变量值，组件无需改 */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* --bg, --surface, --on-surface 等后续在此填写 */
+    /* === 背景与表面（参考 iOS Dark：Grouped Background 体系） === */
+    --bg: #000000;
+    --bg-subtle: #0B0B0C;
+    --surface: #1C1C1E;
+    --surface-2: #2C2C2E;
+    --surface-hover: rgba(235, 235, 245, 0.08);
+
+    /* === 文字层级 === */
+    --on-bg: rgba(255, 255, 255, 0.92);
+    --on-surface: rgba(255, 255, 255, 0.92);
+    --on-surface-variant: rgba(235, 235, 245, 0.72);
+    --on-surface-muted: rgba(235, 235, 245, 0.55);
+
+    /* === 线条/描边 === */
+    --outline: rgba(84, 84, 88, 0.65);
+    --outline-variant: rgba(84, 84, 88, 0.35);
+    --outline-subtle: rgba(84, 84, 88, 0.28);
+    --separator: 1px solid var(--outline-variant);
+
+    /* === 主色（iOS systemBlue dark） === */
+    --primary: #0A84FF;
+    --primary-hover: #409CFF;
+    --on-primary: #FFFFFF;
+    --primary-container: rgba(10, 132, 255, 0.22);
+    --on-primary-container: #5EB0FF;
+
+    /* === 语义色（iOS 系统色 dark 近似） === */
+    --success: #30D158;
+    --success-container: rgba(48, 209, 88, 0.18);
+    --success-border: rgba(48, 209, 88, 0.34);
+    --leave: #FF9F0A;
+    --leave-container: rgba(255, 159, 10, 0.18);
+    --leave-border: rgba(255, 159, 10, 0.34);
+    --late: var(--primary);
+    --late-container: rgba(10, 132, 255, 0.18);
+    --late-border: rgba(10, 132, 255, 0.34);
+    --error: #FF453A;
+    --error-container: rgba(255, 69, 58, 0.18);
+    --on-error-container: rgba(255, 255, 255, 0.92);
+
+    /* === 毛玻璃（暗底） === */
+    --glass-bg: rgba(28, 28, 30, 0.78);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --glass-blur: 24px;
+
     /* 课表卡片色：深色下需保证对比度 */
     --schedule-primary-bg: rgba(0, 122, 255, 0.22);
     --schedule-primary-text: #5EB0FF;

@@ -1,8 +1,9 @@
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { School, LayoutTemplate, Plus, History as HistoryIcon, RefreshCw, GraduationCap, Trash2 } from 'lucide-react'
 import { useCurrentClassId } from '@/components/AppLayout'
 import { storage } from '@/store/storage'
+import * as gradesStore from '@/store/grades'
 import type { GradesPeriod } from '@/types'
 import { useClassList } from '@/hooks/useClassList'
 import { downloadTemplate, type TemplateMeta } from '@/lib/excelTemplates'
@@ -33,12 +34,9 @@ import { Switch } from '@/components/ui/switch'
 
 export default function Settings() {
   const navigate = useNavigate()
-  const mainRef = useRef<HTMLElement>(null)
   const { list: classList, loading: classListLoading, addClass, deleteClass } = useClassList()
   const { currentClassId: currentId, setCurrentClassId } = useCurrentClassId()
-  const [, setRefreshKey] = useState(0)
   const [accordionValue, setAccordionValue] = useState<string | undefined>('classes')
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [deleteConfirmClass, setDeleteConfirmClass] = useState<{ id: string; name: string } | null>(null)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -48,6 +46,14 @@ export default function Settings() {
   const [autoResetAttendance, setAutoResetAttendance] = useState(() => storage.loadAutoResetAttendance())
   const [deleteConfirmPeriod, setDeleteConfirmPeriod] = useState<GradesPeriod | null>(null)
   const [gradesRefreshKey, setGradesRefreshKey] = useState(0)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
+
+  const gradesPeriods = useMemo(() => {
+    void gradesRefreshKey
+    if (!currentId) return []
+    return gradesStore.getPeriods(currentId)
+  }, [currentId, gradesRefreshKey])
+  const currentPeriodId = currentId ? storage.loadCurrentPeriodId(currentId) : null
 
   const handleAddClass = async () => {
     const name = addName.trim()
@@ -56,10 +62,11 @@ export default function Settings() {
     try {
       const id = await addClass(name)
       setCurrentClassId(id)
-      setRefreshKey((k) => k + 1)
       setAddName('')
       setAddDialogOpen(false)
       showToast('已添加并设为默认班级', { variant: 'success', duration: 2000 })
+    } catch {
+      showToast('添加失败，请重试', { variant: 'error' })
     } finally {
       setAddSubmitting(false)
     }
@@ -79,11 +86,10 @@ export default function Settings() {
 
   const handleConfirmDeletePeriod = () => {
     if (!currentId || !deleteConfirmPeriod) return
-    const all = storage.loadGrades() ?? {}
-    const list = all[currentId] ?? []
+    const list = gradesStore.getPeriods(currentId)
     if (list.length <= 1) return
     const nextList = list.filter((p) => p.id !== deleteConfirmPeriod.id)
-    storage.saveGrades({ ...all, [currentId]: nextList })
+    gradesStore.savePeriods(currentId, nextList)
     setDeleteConfirmPeriod(null)
     setGradesRefreshKey((k) => k + 1)
     showToast('已删除该期成绩单', { variant: 'success', duration: 1800 })
@@ -96,14 +102,12 @@ export default function Settings() {
       const wasCurrent = deleteConfirmClass.id === currentId
       await deleteClass(deleteConfirmClass.id)
       setDeleteConfirmClass(null)
-      setOpenSwipeId(null)
       if (wasCurrent && classList.length > 1) {
         const next = classList.find((c) => c.id !== deleteConfirmClass.id)
         setCurrentClassId(next?.id ?? null)
       } else if (classList.length <= 1) {
         setCurrentClassId(null)
       }
-      setRefreshKey((k) => k + 1)
       showToast('已删除', { variant: 'success', duration: 1800 })
     } catch {
       showToast('删除失败，请重试', { variant: 'error' })
@@ -114,7 +118,7 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
-      <main ref={mainRef} className="space-y-3 px-4 py-4">
+      <main className="space-y-3 px-4 py-4" aria-label="我的">
         <section className="rounded-2xl bg-[var(--surface)] overflow-hidden border border-[var(--outline-variant)]">
           <Accordion
             type="single"
@@ -124,7 +128,7 @@ export default function Settings() {
             className="w-full"
           >
             <AccordionItem value="classes" className="border-0">
-              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5 ">
+              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5">
                 <School className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
                 <span className="text-[13px] font-medium text-[var(--on-surface)]">我的班级</span>
                 {!classListLoading && classList.length > 0 && (
@@ -142,7 +146,7 @@ export default function Settings() {
               >
                 <div className={cn('min-h-0 overflow-hidden', accordionValue === 'classes' && 'max-h-[70vh]')}>
                   <div className="px-5 pb-4 pt-0">
-                  <p className="text-[12px] text-[var(--on-surface-muted)] leading-relaxed">选择默认班级；列表第一个为默认班级，将显示在首页点名。</p>
+                  <p className="text-[12px] text-[var(--on-surface-muted)] leading-relaxed">选择默认班级，将作为首页点名使用的班级。</p>
                   {classListLoading ? (
                     <p className="mt-3 text-[12px] text-[var(--on-surface-muted)]">加载中…</p>
                   ) : classList.length === 0 ? (
@@ -162,13 +166,10 @@ export default function Settings() {
                           <SwipeableClassRow
                             classItem={cls}
                             isCurrent={cls.id === currentId}
-                            isOpen={openSwipeId === cls.id}
                             canDelete={classList.length > 1}
-                            onSwipeOpen={setOpenSwipeId}
                             onSelect={() => {
                               if (cls.id === currentId) return
                               setCurrentClassId(cls.id)
-                              setRefreshKey((k) => k + 1)
                               showToast(`已切换到 ${cls.name}`, { variant: 'success', duration: 1800 })
                             }}
                             onDelete={() => {
@@ -194,15 +195,12 @@ export default function Settings() {
             </AccordionItem>
 
             <AccordionItem value="grades" className="border-0 border-t border-[var(--outline-variant)]">
-              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5 ">
+              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5">
                 <GraduationCap className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
                 <span className="text-[13px] font-medium text-[var(--on-surface)]">历史成绩单</span>
-                {currentId && (() => {
-                  const periods = (storage.loadGrades() ?? {})[currentId] ?? []
-                  return periods.length > 0 ? (
-                    <span className="text-[12px] text-[var(--on-surface-muted)]">（{periods.length} 期）</span>
-                  ) : null
-                })()}
+                {gradesPeriods.length > 0 && (
+                  <span className="text-[12px] text-[var(--on-surface-muted)]">（{gradesPeriods.length} 期）</span>
+                )}
               </AccordionTrigger>
               <div
                 className={cn(
@@ -212,16 +210,13 @@ export default function Settings() {
               >
                 <div className={cn('min-h-0 overflow-hidden', accordionValue === 'grades' && 'max-h-[70vh]')}>
                   <div className="px-5 pb-4 pt-0">
-                  {!currentId ? (
-                    <p className="text-[12px] text-[var(--on-surface-muted)]">请先在「我的班级」选择班级。</p>
-                  ) : (() => {
-                    const periods = (storage.loadGrades() ?? {})[currentId] ?? []
-                    const currentPeriodId = storage.loadCurrentPeriodId(currentId)
-                    return periods.length === 0 ? (
+                    {!currentId ? (
+                      <p className="text-[12px] text-[var(--on-surface-muted)]">请先在「我的班级」选择班级。</p>
+                    ) : gradesPeriods.length === 0 ? (
                       <p className="text-[12px] text-[var(--on-surface-muted)]">该班级暂无成绩单，请到成绩页添加。</p>
                     ) : (
                       <div key={gradesRefreshKey} className="mt-px flex flex-col gap-px">
-                        {periods.map((p, index) => (
+                        {gradesPeriods.map((p, index) => (
                           <Fragment key={p.id}>
                             {index > 0 && <div className="h-px shrink-0 bg-[var(--outline-variant)]" />}
                             <div className="flex min-h-[44px] w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-2.5">
@@ -238,7 +233,7 @@ export default function Settings() {
                                   </span>
                                 )}
                               </Button>
-                              {periods.length > 1 && (
+                              {gradesPeriods.length > 1 && (
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -257,15 +252,14 @@ export default function Settings() {
                           </Fragment>
                         ))}
                       </div>
-                    )
-                  })()}
+                    )}
                   </div>
                 </div>
               </div>
             </AccordionItem>
 
             <AccordionItem value="templates" className="border-0 border-t border-[var(--outline-variant)]">
-              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5 ">
+              <AccordionTrigger className="flex min-h-[52px] items-center gap-2.5 px-5 py-3.5">
                 <LayoutTemplate className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
                 <span className="text-[13px] font-medium text-[var(--on-surface)]">模板库</span>
               </AccordionTrigger>
@@ -294,6 +288,7 @@ export default function Settings() {
             variant="ghost"
             className="h-11 w-full justify-start gap-2.5 rounded-none border-0 px-5 text-[13px] font-medium text-[var(--on-surface)]"
             onClick={() => navigate(currentId ? `/history/${currentId}` : '/history')}
+            aria-label="历史考勤"
           >
             <HistoryIcon className="h-[17px] w-[17px] shrink-0 text-[var(--primary)]" strokeWidth={1.5} />
             历史考勤
@@ -328,7 +323,8 @@ export default function Settings() {
           <Button
             variant="ghost"
             className="h-11 w-full justify-start rounded-none border-0 px-5 text-[13px] font-medium text-[var(--on-surface-muted)]"
-            onClick={() => { storage.saveAuth(false); navigate('/login', { replace: true }) }}
+            onClick={() => setExitConfirmOpen(true)}
+            aria-label="退出登录"
           >
             退出登录
           </Button>
@@ -345,8 +341,32 @@ export default function Settings() {
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 flex flex-row justify-end gap-2">
             <AlertDialogCancel disabled={deleteSubmitting}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} disabled={deleteSubmitting}>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmDelete} disabled={deleteSubmitting}>
               {deleteSubmitting ? '删除中…' : '确定删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader className="text-center sm:text-center">
+            <AlertDialogTitle className="block text-center text-dialog-title text-[var(--on-surface)]">确定退出登录？</AlertDialogTitle>
+            <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)]">
+              退出后需重新登录方可使用。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 flex flex-row justify-end gap-2">
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setExitConfirmOpen(false)
+                storage.saveAuth(false)
+                navigate('/login', { replace: true })
+              }}
+            >
+              退出
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -369,7 +389,13 @@ export default function Settings() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+      <Dialog
+        open={addDialogOpen}
+        onOpenChange={(open) => {
+          setAddDialogOpen(open)
+          if (!open) setAddName('')
+        }}
+      >
         <DialogContent>
           <DialogHeader className="pb-2">
             <DialogTitle className="text-dialog-title text-[var(--on-surface)]">添加班级</DialogTitle>

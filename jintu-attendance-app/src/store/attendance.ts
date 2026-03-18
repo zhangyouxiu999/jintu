@@ -11,9 +11,8 @@ function key(classId: string, date: string, period: PeriodId): string {
   return `${classId}|${date}|${period}`
 }
 
-function persist(): void {
-  const arr = Array.from(map.values())
-  storage.saveAttendance(arr)
+function persistOne(snapshot: AttendanceSnapshot): void {
+  storage.saveAttendanceSnapshot(snapshot.classId, snapshot.date, snapshot.period, snapshot)
 }
 
 /** 从本地持久化恢复（启动时调用） */
@@ -43,8 +42,9 @@ export async function get(
 
 export async function upsert(snapshot: AttendanceSnapshot): Promise<void> {
   const k = key(snapshot.classId, snapshot.date, snapshot.period)
-  map.set(k, { ...snapshot, updatedAt: new Date().toISOString() })
-  persist()
+  const next = { ...snapshot, updatedAt: new Date().toISOString() }
+  map.set(k, next)
+  persistOne(next)
 }
 
 export async function getOrCreate(
@@ -67,7 +67,7 @@ export async function getOrCreate(
     updatedAt: new Date().toISOString(),
   }
   map.set(k, snap)
-  persist()
+  persistOne(snap)
   return snap
 }
 
@@ -135,6 +135,9 @@ export async function listByClass(classId: string): Promise<AttendanceSnapshot[]
 }
 
 export function clearAll(): void {
+  // v2：逐条清理，避免遗留索引；同时清空内存 map
+  for (const v of map.values()) {
+    storage.removeAttendanceSnapshot(v.classId, v.date, v.period)
+  }
   map.clear()
-  persist()
 }

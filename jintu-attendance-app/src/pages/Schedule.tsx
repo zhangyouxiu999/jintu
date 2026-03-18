@@ -61,7 +61,7 @@ export default function Schedule() {
       },
     })
     return () => setPageActions({})
-  }, [classId, className, importSubmitting, scheduleData, setPageActions])
+  }, [classId, className, importSubmitting, importFileRef, scheduleData, setPageActions])
 
   const hasEditableData = Boolean(classId && scheduleData)
 

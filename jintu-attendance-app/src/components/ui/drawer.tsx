@@ -36,7 +36,7 @@ function DrawerContent({
       <DrawerOverlay />
       <VaulDrawer.Content
         className={cn(
-          'fixed inset-x-0 bottom-0 z-[100] flex max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top,0px)))] flex-col rounded-t-[20px] bg-[var(--surface)] shadow-[0_-4px_24px_rgba(0,0,0,0.12)] outline-none pb-[env(safe-area-inset-bottom,0px)] [will-change:transform]',
+          'fixed inset-x-0 bottom-0 top-[max(env(safe-area-inset-top,0px),32px)] z-[100] flex flex-col rounded-t-[20px] bg-[var(--surface)] shadow-[0_-4px_24px_rgba(0,0,0,0.12)] outline-none pb-[env(safe-area-inset-bottom,0px)] [will-change:transform]',
           className
         )}
         {...props}
@@ -89,7 +89,10 @@ function DrawerContentWithHeader({
 }: DrawerContentWithHeaderProps) {
   return (
     <DrawerContent className={cn('flex min-h-0 flex-col', className)}>
-      <div className="flex shrink-0 items-center justify-between border-b border-[var(--outline-variant)] bg-transparent px-4 py-3">
+      {/* 预留顶部安全区（状态栏/刘海），避免「我的」标题栏顶进状态栏；无 safe-area 时至少 24px */}
+      <div
+        className="flex shrink-0 items-center justify-between border-b border-[var(--outline-variant)] bg-transparent px-4 py-3 pt-[max(env(safe-area-inset-top,0px),24px)]"
+      >
         <div className="w-10 shrink-0" aria-hidden />
         <DrawerTitle className="min-w-0 flex-1 text-center">{title}</DrawerTitle>
         {showCloseButton && onClose ? (

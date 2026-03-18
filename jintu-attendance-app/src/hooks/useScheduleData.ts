@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { storage } from '@/store/storage'
+import * as scheduleStore from '@/store/schedule'
 import { showToast } from '@/lib/toast'
 import { ROW_LABEL_TO_PERIOD, cellKey } from '@/lib/schedule'
 
@@ -18,14 +18,12 @@ export function useScheduleData(classId: string | undefined) {
 
   useEffect(() => {
     if (!classId) return
-    const all = storage.loadSchedule()
-    setScheduleData(all?.[classId] ?? {})
+    setScheduleData(scheduleStore.getSchedule(classId))
   }, [classId])
 
   const persistSchedule = useCallback((next: Record<string, string>) => {
     if (!classId) return
-    const all = storage.loadSchedule() ?? {}
-    storage.saveSchedule({ ...all, [classId]: next })
+    scheduleStore.saveSchedule(classId, next)
   }, [classId])
 
   const handleCellClick = useCallback((day: string, period: string) => {

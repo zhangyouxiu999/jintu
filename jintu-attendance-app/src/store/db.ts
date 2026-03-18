@@ -12,6 +12,9 @@ let initialized = false
 export async function init(): Promise<void> {
   if (initialized) return
   try {
+    // schema v2：按需把旧 localStorage 数据迁移到新 key（保留旧 key，便于回滚）
+    storage.migrateToV2()
+
     const classesData = storage.loadClasses()
     if (classesData != null) classesStore.hydrateFromPersisted(classesData)
 

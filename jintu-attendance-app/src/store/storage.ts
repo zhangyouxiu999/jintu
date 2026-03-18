@@ -14,6 +14,7 @@ import type {
 } from '@/types'
 
 const PREFIX = 'jintu_attendance_'
+const PREFIX_V2 = 'jintu_attendance_v2_'
 
 export const STORAGE_KEYS = {
   classes: PREFIX + 'classes',
@@ -28,6 +29,32 @@ export const STORAGE_KEYS = {
   currentPeriodIdByClass: PREFIX + 'current_period_id_by_class',
   autoResetAttendance: PREFIX + 'auto_reset_attendance',
 } as const
+
+const STORAGE_KEYS_V2 = {
+  schemaVersion: PREFIX_V2 + 'schema_version',
+  /** Attendance：每条快照单独存，另外按班级维护索引（snapshotKey 列表） */
+  attendanceSnapshot: (snapshotKey: string) => PREFIX_V2 + `attendance_snapshot_${snapshotKey}`,
+  attendanceIndexByClass: (classId: string) => PREFIX_V2 + `attendance_index_${classId}`,
+  /** Schedule：按班级单独存 */
+  scheduleByClass: (classId: string) => PREFIX_V2 + `schedule_${classId}`,
+  /** Grades：按班级单独存（periods 数组） */
+  gradesByClass: (classId: string) => PREFIX_V2 + `grades_${classId}`,
+} as const
+
+const SCHEMA_VERSION_V2 = 2 as const
+
+function safeRemove(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch (e) {
+    console.warn('[storage] remove failed:', key, e)
+  }
+}
+
+function snapshotKeyOf(classId: string, date: string, period: number): string {
+  // 与 src/store/attendance.ts 的 key() 兼容：`${classId}|${date}|${period}`
+  return `${classId}|${date}|${period}`
+}
 
 function save(key: string, data: unknown): void {
   try {
@@ -53,6 +80,57 @@ export const storage = {
   save,
   load,
 
+  /**
+   * 一次性迁移到 v2 schema：
+   * - 保留旧 key（回滚安全）
+   * - 仅在 schemaVersion < 2 时执行
+   */
+  migrateToV2(): void {
+    const current = load<number>(STORAGE_KEYS_V2.schemaVersion) ?? 0
+    if (current >= SCHEMA_VERSION_V2) return
+
+    // 1) Attendance：旧结构为快照数组
+    try {
+      const oldAttendance = load<AttendanceSnapshot[]>(STORAGE_KEYS.attendance) ?? []
+      const indexByClass = new Map<string, string[]>()
+      for (const snap of oldAttendance) {
+        if (!snap?.classId || !snap?.date || snap?.period == null) continue
+        const sk = snapshotKeyOf(snap.classId, snap.date, snap.period)
+        save(STORAGE_KEYS_V2.attendanceSnapshot(sk), snap)
+        const list = indexByClass.get(snap.classId) ?? []
+        if (!list.includes(sk)) list.push(sk)
+        indexByClass.set(snap.classId, list)
+      }
+      for (const [classId, list] of indexByClass) {
+        save(STORAGE_KEYS_V2.attendanceIndexByClass(classId), list)
+      }
+    } catch (e) {
+      console.warn('[storage] migrate attendance to v2 failed:', e)
+    }
+
+    // 2) Grades：旧结构为 GradesDataByClass（或 legacy GradesForClass，loadGrades 内已兼容）
+    try {
+      const allGrades = this.loadGrades() ?? {}
+      for (const [classId, periods] of Object.entries(allGrades)) {
+        save(STORAGE_KEYS_V2.gradesByClass(classId), periods)
+      }
+    } catch (e) {
+      console.warn('[storage] migrate grades to v2 failed:', e)
+    }
+
+    // 3) Schedule：旧结构为 ScheduleDataByClass
+    try {
+      const allSchedule = load<ScheduleDataByClass>(STORAGE_KEYS.schedule) ?? {}
+      for (const [classId, data] of Object.entries(allSchedule)) {
+        save(STORAGE_KEYS_V2.scheduleByClass(classId), data)
+      }
+    } catch (e) {
+      console.warn('[storage] migrate schedule to v2 failed:', e)
+    }
+
+    save(STORAGE_KEYS_V2.schemaVersion, SCHEMA_VERSION_V2)
+  },
+
   saveClasses(data: ClassEntity[]) {
     save(STORAGE_KEYS.classes, data)
   },
@@ -72,6 +150,29 @@ export const storage = {
   },
   loadAttendance(): AttendanceSnapshot[] | null {
     return load<AttendanceSnapshot[]>(STORAGE_KEYS.attendance)
+  },
+
+  /** v2：按快照粒度存取（用于高频写入优化） */
+  saveAttendanceSnapshot(classId: string, date: string, period: number, snap: AttendanceSnapshot) {
+    const sk = snapshotKeyOf(classId, date, period)
+    save(STORAGE_KEYS_V2.attendanceSnapshot(sk), snap)
+    const indexKey = STORAGE_KEYS_V2.attendanceIndexByClass(classId)
+    const index = load<string[]>(indexKey) ?? []
+    if (!index.includes(sk)) save(indexKey, [...index, sk])
+  },
+  loadAttendanceSnapshot(classId: string, date: string, period: number): AttendanceSnapshot | null {
+    const sk = snapshotKeyOf(classId, date, period)
+    return load<AttendanceSnapshot>(STORAGE_KEYS_V2.attendanceSnapshot(sk))
+  },
+  listAttendanceSnapshotKeysByClass(classId: string): string[] {
+    return load<string[]>(STORAGE_KEYS_V2.attendanceIndexByClass(classId)) ?? []
+  },
+  removeAttendanceSnapshot(classId: string, date: string, period: number): void {
+    const sk = snapshotKeyOf(classId, date, period)
+    safeRemove(STORAGE_KEYS_V2.attendanceSnapshot(sk))
+    const indexKey = STORAGE_KEYS_V2.attendanceIndexByClass(classId)
+    const index = load<string[]>(indexKey) ?? []
+    if (index.includes(sk)) save(indexKey, index.filter((x) => x !== sk))
   },
 
   saveAnnouncements(data: AnnouncementEntity[]) {
@@ -101,6 +202,13 @@ export const storage = {
   loadSchedule(): ScheduleDataByClass | null {
     return load<ScheduleDataByClass>(STORAGE_KEYS.schedule)
   },
+  /** v2：按班级存取 */
+  saveScheduleForClass(classId: string, data: NonNullable<ScheduleDataByClass[string]>) {
+    save(STORAGE_KEYS_V2.scheduleByClass(classId), data)
+  },
+  loadScheduleForClass(classId: string): NonNullable<ScheduleDataByClass[string]> | null {
+    return load<NonNullable<ScheduleDataByClass[string]>>(STORAGE_KEYS_V2.scheduleByClass(classId))
+  },
 
   saveGrades(data: GradesDataByClass) {
     save(STORAGE_KEYS.grades, data)
@@ -122,6 +230,13 @@ export const storage = {
       }
     }
     return out
+  },
+  /** v2：按班级存取（periods 数组） */
+  saveGradesForClass(classId: string, periods: GradesPeriod[]) {
+    save(STORAGE_KEYS_V2.gradesByClass(classId), periods)
+  },
+  loadGradesForClass(classId: string): GradesPeriod[] | null {
+    return load<GradesPeriod[]>(STORAGE_KEYS_V2.gradesByClass(classId))
   },
 
   saveCurrentClassId(id: string | null) {

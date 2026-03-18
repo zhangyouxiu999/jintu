@@ -10,10 +10,8 @@ export interface ClassItem {
 interface SwipeableClassRowProps {
   classItem: ClassItem
   isCurrent: boolean
-  isOpen: boolean
   /** 为 false 时不显示删除按钮（如仅剩一个班级时） */
   canDelete?: boolean
-  onSwipeOpen: (id: string | null) => void
   onSelect: () => void
   onDelete: () => void
 }
@@ -21,9 +19,7 @@ interface SwipeableClassRowProps {
 export function SwipeableClassRow({
   classItem,
   isCurrent,
-  isOpen: _isOpen,
   canDelete = true,
-  onSwipeOpen: _onSwipeOpen,
   onSelect,
   onDelete,
 }: SwipeableClassRowProps) {

@@ -189,7 +189,7 @@ export default function Attendance() {
       cleanupRef.current = showToast(`已进入${label}时段`, { duration: 2500 })
       return () => cleanupRef.current?.()
     }
-  }, [classId, students.length, saveAllStatus, setAllAttendanceStatus, refresh])
+  }, [classId, students, saveAllStatus, setAllAttendanceStatus, refresh])
 
   // 页面重新可见或应用从后台恢复时，从 store 刷新点名数据，避免退出再进来不准确
   const appListenerRef = useRef<{ remove: () => Promise<void> } | null>(null)
@@ -350,7 +350,7 @@ export default function Attendance() {
       ],
     })
     return () => setPageActions({})
-  }, [classId, loading, setPageActions, handleMarkAllPresent, handleExportStudentList, showEditStudent])
+  }, [classId, loading, setPageActions, handleMarkAllPresent, handleExportStudentList, setImportOpen, showEditStudent])
 
   const handleReset = async () => {
     const next = students.reduce<AttendanceStatusMap>((acc, s) => ({ ...acc, [s.id]: 0 }), {})

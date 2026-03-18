@@ -6,6 +6,7 @@ import { useClass } from '@/hooks/useClass'
 import { useGradesImport } from '@/hooks/useGradesImport'
 import type { GradesForClass, GradesPeriod } from '@/types'
 import { storage } from '@/store/storage'
+import * as gradesStore from '@/store/grades'
 import { useAppLayout } from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,8 +86,7 @@ export default function Grades() {
 
   useEffect(() => {
     if (!classId) return
-    const all = storage.loadGrades()
-    const list = all?.[classId]
+    const list = gradesStore.getPeriods(classId)
     const statePeriodId = (location.state as { periodId?: string } | null)?.periodId
     if (list?.length) {
       setPeriods(list)
@@ -102,8 +102,7 @@ export default function Grades() {
       const first: GradesPeriod = { id: newPeriodId(), name: '第一期', subjects: [...defaultSubjects], scores: {} }
       setPeriods([first])
       setCurrentPeriodId(first.id)
-      const nextAll = { ...(all ?? {}), [classId]: [first] }
-      storage.saveGrades(nextAll)
+      gradesStore.savePeriods(classId, [first])
     }
   }, [classId, location.state])
 
@@ -140,8 +139,7 @@ export default function Grades() {
           : p
       )
       setPeriods(next)
-      const all = storage.loadGrades() ?? {}
-      storage.saveGrades({ ...all, [classId]: next })
+      gradesStore.savePeriods(classId, next)
     },
     [classId, currentPeriodId]
   )
@@ -189,7 +187,7 @@ export default function Grades() {
       ],
     })
     return () => setPageActions({})
-  }, [classId, loading, importExcelSubmitting, exportSubmitting, periods, currentPeriodId, setPageActions])
+  }, [classId, loading, importExcelSubmitting, exportSubmitting, importExcelFileRef, periods, currentPeriodId, setPageActions])
 
   const getScore = useCallback(
     (studentId: string, subject: string) => grades.scores[studentId]?.[subject] ?? '',
@@ -294,8 +292,7 @@ export default function Grades() {
     setPeriods(next)
     setCurrentPeriodId(newPeriod.id)
     if (classId) {
-      const all = storage.loadGrades() ?? {}
-      storage.saveGrades({ ...all, [classId]: next })
+      gradesStore.savePeriods(classId, next)
     }
     setNewPeriodName('')
     setAddPeriodOpen(false)
