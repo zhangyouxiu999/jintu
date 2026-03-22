@@ -5,7 +5,14 @@ export async function gotoHash(page: Page, path: string) {
 }
 
 export async function openGlobalMenu(page: Page) {
-  await page.getByRole('button', { name: '打开功能菜单' }).click()
+  const trigger = page.getByRole('button', { name: '打开功能菜单' })
+  await trigger.waitFor()
+  for (let i = 0; i < 3; i++) {
+    await trigger.click()
+    const firstItem = page.getByRole('menuitem').first()
+    if (await firstItem.isVisible().catch(() => false)) return
+    await page.waitForTimeout(200)
+  }
   await expect(page.getByRole('menuitem').first()).toBeVisible()
 }
 

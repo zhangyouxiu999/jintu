@@ -27,8 +27,8 @@ test('import students, mark attendance, reset, export', async ({ page }) => {
   await expect(page.getByText('孙七')).toBeVisible()
 
   // 标记已到
-  const zhaoRow = page.locator('div', { hasText: '赵六' }).first()
-  await zhaoRow.getByRole('button', { name: '已到' }).click()
+  const zhaoRow = page.locator('div[role="button"]', { hasText: '赵六' }).first()
+  await zhaoRow.locator('button', { hasText: '已到' }).first().click()
   await expect(page.getByRole('button', { name: '筛选：实到' })).toContainText('1')
 
   // 一键全勤

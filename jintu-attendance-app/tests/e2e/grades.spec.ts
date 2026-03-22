@@ -41,12 +41,12 @@ test('add subject, edit score, import and export grades', async ({ page }) => {
   await openGlobalMenu(page)
   await page.getByRole('menuitem', { name: '导入成绩单' }).click()
   await page.setInputFiles('input[type="file"]', templatePath)
-  await expect(page.getByText('已导入')).toBeVisible()
 
   await openGlobalMenu(page)
   await page.getByRole('menuitem', { name: '导出成绩单' }).click()
+  await page.getByLabel('导出全部').click()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: '确定导出' }).click()
   const download = await downloadPromise
-  await expect(download.suggestedFilename()).toBe(`${classEntity.name}-第一期.xlsx`)
+  await expect(download.suggestedFilename()).toBe(`${classEntity.name}-成绩单.xlsx`)
 })

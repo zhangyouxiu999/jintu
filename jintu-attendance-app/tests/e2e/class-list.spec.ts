@@ -44,13 +44,13 @@ test('edit and export class', async ({ page }) => {
   await installFixedDate(page, FIXED_ISO)
 
   await gotoHash(page, '/classes')
-  await expect(page.getByText(templates.className)).toBeVisible()
+  await expect(page.getByRole('button', { name: new RegExp(templates.className) })).toBeVisible()
 
   await page.getByRole('button', { name: '更多' }).first().click()
   await page.getByRole('menuitem', { name: '修改' }).click()
   await page.getByPlaceholder('班级名称').fill('一班-更新')
   await page.getByRole('button', { name: '保存' }).click()
-  await expect(page.getByText('一班-更新')).toBeVisible()
+  await expect(page.getByRole('button', { name: /一班-更新/ })).toBeVisible()
 
   await page.getByRole('button', { name: '更多' }).first().click()
   await page.getByRole('menuitem', { name: '导出所有' }).click()
