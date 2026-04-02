@@ -1,10 +1,46 @@
-import { test, expect } from '@playwright/test'
-import { seedLocalStorage } from './utils/storage'
+import { expect, test } from '@playwright/test'
 import { installFixedDate } from './utils/date'
-import { gotoHash, openSettingsDrawer } from './utils/nav'
 import { FIXED_ISO, classEntity, students } from './utils/fixtures'
+import { gotoHash, openClassPanel } from './utils/nav'
+import { seedLocalStorage } from './utils/storage'
 
-test('settings drawer toggle and navigation', async ({ page }) => {
+test('class panel navigation and legacy route redirects', async ({ page }) => {
+  await seedLocalStorage(page, {
+    auth: true,
+    classes: [classEntity],
+    students,
+    currentClassId: classEntity.id,
+  })
+  await installFixedDate(page, FIXED_ISO)
+
+  await gotoHash(page, `/attendance/${classEntity.id}`)
+  await openClassPanel(page)
+  await expect(page.getByText('当前班级扩展')).toBeVisible()
+  await expect(page.getByRole('button', { name: /学生.*进入/ })).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  await gotoHash(page, '/settings')
+  await expect(page).toHaveURL(/#\/more/)
+
+  await gotoHash(page, '/history')
+  await expect(page).toHaveURL(new RegExp(`#\\/history\\/${classEntity.id}`))
+})
+
+test('invalid class route shows explicit empty state instead of silent redirect', async ({ page }) => {
+  await seedLocalStorage(page, {
+    auth: true,
+    classes: [classEntity],
+    students,
+    currentClassId: classEntity.id,
+  })
+  await installFixedDate(page, FIXED_ISO)
+
+  await gotoHash(page, '/history/missing-class')
+  await expect(page.getByRole('main').getByText('班级不存在')).toBeVisible()
+  await expect(page).toHaveURL(/#\/history\/missing-class/)
+})
+
+test('more page toggle and logout', async ({ page }) => {
   await seedLocalStorage(page, {
     auth: true,
     classes: [classEntity],
@@ -14,13 +50,14 @@ test('settings drawer toggle and navigation', async ({ page }) => {
   })
   await installFixedDate(page, FIXED_ISO)
 
-  await gotoHash(page, `/attendance/${classEntity.id}`)
-  await openSettingsDrawer(page)
+  await gotoHash(page, '/more')
+  await expect(page.getByRole('main').getByText('模板下载')).toBeVisible()
 
-  const switchControl = page.getByRole('switch', { name: '自动重置考勤' })
+  const switchControl = page.getByRole('switch', { name: '新时段提醒' })
   await switchControl.click()
-  await expect(page.getByText('已开启自动重置考勤')).toBeVisible()
+  await expect(page.getByText('已开启新时段提醒')).toBeVisible()
 
-  await page.getByRole('button', { name: '历史考勤' }).click()
-  await expect(page).toHaveURL(new RegExp(`#\/history\/${classEntity.id}`))
+  await page.getByRole('button', { name: '退出登录' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: /^退出$/ }).click()
+  await expect(page).toHaveURL(/#\/login/)
 })

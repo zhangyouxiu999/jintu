@@ -14,7 +14,8 @@ test('download templates', async ({ page }) => {
   await seedLocalStorage(page, { auth: true })
   await installFixedDate(page, FIXED_ISO)
 
-  await gotoHash(page, '/templates')
+  await gotoHash(page, '/more')
+  await expect(page).toHaveURL(/#\/more/)
 
   for (const fileName of templates) {
     const downloadPromise = page.waitForEvent('download')

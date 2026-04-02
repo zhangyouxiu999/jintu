@@ -12,8 +12,8 @@ let initialized = false
 export async function init(): Promise<void> {
   if (initialized) return
   try {
-    // schema v2：按需把旧 localStorage 数据迁移到新 key（保留旧 key，便于回滚）
-    storage.migrateToV2()
+    // schema v3：保留班级/学生/课表/成绩，重置旧 attendance 数据
+    storage.migrateToV3()
 
     const classesData = storage.loadClasses()
     if (classesData != null) classesStore.hydrateFromPersisted(classesData)
@@ -21,8 +21,7 @@ export async function init(): Promise<void> {
     const studentsData = storage.loadStudents()
     if (studentsData != null) studentsStore.hydrateFromPersisted(studentsData)
 
-    const attendanceData = storage.loadAttendance()
-    if (attendanceData != null) attendanceStore.hydrateFromPersisted(attendanceData)
+    attendanceStore.hydrateFromPersisted()
 
     const announcementsData = storage.loadAnnouncements()
     if (announcementsData != null) announcementsStore.hydrateFromPersisted(announcementsData)

@@ -37,8 +37,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] px-4 text-caption text-[var(--on-surface)]"
+            className="rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] px-4 text-[14px] text-[var(--on-surface)]"
             onClick={this.retry}
           >
             重试

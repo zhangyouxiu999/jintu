@@ -1,6 +1,9 @@
 node_modules
 dist
 dist-ssr
+test-results
+.playwright-cli
+.tamagui
 *.local
 .DS_Store
 ios/App/App/public

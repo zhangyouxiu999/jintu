@@ -2,7 +2,7 @@
  * 导出班级全部表单为带样式的 Excel（与模板风格一致：边框、表头加粗、居中）
  */
 import ExcelJS from 'exceljs'
-import type { AttendanceSnapshot, ClassEntity, GradesPeriod, ScheduleCellMap, StudentEntity } from '@/types'
+import type { ClassEntity, ConfirmedAttendanceRecord, GradesPeriod, ScheduleCellMap, StudentEntity } from '@/types'
 import { PERIOD_NAMES } from '@/lib/period'
 import { ROW_LABEL_TO_PERIOD, SCHEDULE_ROW_LABELS } from '@/lib/schedule'
 
@@ -99,7 +99,7 @@ function styleScheduleSheet(ws: ExcelJS.Worksheet) {
 export interface ExportClassData {
   cls: ClassEntity
   students: StudentEntity[]
-  snapshots: AttendanceSnapshot[]
+  snapshots: ConfirmedAttendanceRecord[]
   scheduleData: ScheduleCellMap
   periods: GradesPeriod[]
   sortedStudents: StudentEntity[]

@@ -36,15 +36,21 @@ export interface Student {
   attendanceStatus: AttendanceStatus
 }
 
-/** 考勤快照 */
-export interface AttendanceSnapshot {
+interface AttendanceRecordBase {
   id: EntityId
   classId: EntityId
   date: ISODateString
   period: PeriodId
   statusMap: AttendanceStatusMap
-  confirmedAt?: ISODateString
   updatedAt: ISODateString
+}
+
+/** 当前时段草稿 */
+export type AttendanceDraft = AttendanceRecordBase
+
+/** 已确认历史记录 */
+export interface ConfirmedAttendanceRecord extends AttendanceRecordBase {
+  confirmedAt: ISODateString
 }
 
 /** 公告 */

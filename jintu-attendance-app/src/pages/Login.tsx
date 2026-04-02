@@ -57,19 +57,24 @@ export default function Login() {
   return (
     <div
       ref={contentRef}
-      className="flex min-h-screen flex-col bg-[var(--bg)] px-5 pt-[var(--safe-top)] pb-[var(--safe-bottom)]"
+      className="min-h-[100dvh] bg-[var(--bg)] px-[var(--page-x)] pb-[calc(var(--safe-bottom)+24px)] pt-[calc(var(--safe-top)+24px)]"
     >
-      <div className="flex flex-1 flex-col items-center justify-center py-10">
-        <div className="login-logo mb-7 flex h-[76px] w-[76px] items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] shadow-[0_12px_32px_rgba(0,122,255,0.28)]">
-          <AppLogo className="h-10 w-10 opacity-95" />
-        </div>
-        <h1 className="login-title mb-1 text-[22px] font-bold tracking-tight text-[var(--on-surface)]">{getAppName()}</h1>
-        <p className="login-title mb-8 text-[14px] text-[var(--on-surface-muted)]">请登录后使用</p>
+      <div className="mx-auto flex min-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-48px)] w-full max-w-[var(--app-max-width)] items-center">
+        <div className="w-full rounded-[24px] border border-[var(--outline)]/75 bg-[var(--surface)] p-5 shadow-[0_10px_24px_rgba(94,79,52,0.04)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-[var(--primary-container)]">
+              <AppLogo className="h-7 w-7 opacity-95" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] font-medium text-[var(--on-surface-muted)]">老师个人工作台</p>
+              <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.04em] text-[var(--on-surface)]">{getAppName()}</h1>
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit} className="login-form w-full max-w-[320px]">
-          <div className="overflow-hidden rounded-[20px] bg-white">
-            <label className="block px-4 pt-4 pb-0.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--on-surface-muted)]">账号</label>
-            <div className="relative px-1 pb-0">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+            <div className="space-y-2">
+              <label className="block text-[12px] font-medium text-[var(--on-surface-variant)]">账号</label>
+              <div className="relative">
               <User className="absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
               <Input
                 type="text"
@@ -77,11 +82,14 @@ export default function Login() {
                 placeholder="请输入账号"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="h-11 rounded-none border-0 border-b border-[var(--outline-variant)] bg-transparent pl-10 pr-3 text-[15px] text-[var(--on-surface)] shadow-none outline-none placeholder:text-[var(--on-surface-muted)] focus-visible:ring-0"
+                className="h-12 rounded-[16px] border-[var(--outline)]/70 bg-[var(--surface-2)] pl-10 pr-3 text-[15px] text-[var(--on-surface)] shadow-none outline-none placeholder:text-[var(--on-surface-muted)]"
               />
+              </div>
             </div>
-            <label className="block px-4 pt-3 pb-0.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--on-surface-muted)]">密码</label>
-            <div className="relative px-1 pb-0">
+
+            <div className="space-y-2">
+              <label className="block text-[12px] font-medium text-[var(--on-surface-variant)]">密码</label>
+              <div className="relative">
               <Lock className="absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--on-surface-muted)]" strokeWidth={1.5} />
               <Input
                 type="password"
@@ -89,25 +97,26 @@ export default function Login() {
                 placeholder="请输入密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-11 rounded-none border-0 bg-transparent pl-10 pr-3 text-[15px] text-[var(--on-surface)] shadow-none outline-none placeholder:text-[var(--on-surface-muted)] focus-visible:ring-0"
+                className="h-12 rounded-[16px] border-[var(--outline)]/70 bg-[var(--surface-2)] pl-10 pr-3 text-[15px] text-[var(--on-surface)] shadow-none outline-none placeholder:text-[var(--on-surface-muted)]"
               />
+              </div>
             </div>
+
             {error ? (
-              <p className="px-4 pt-2 pb-0 text-[13px] text-[var(--error)]" role="alert">
+              <p className="rounded-[14px] bg-[var(--error-container)] px-3 py-2 text-[13px] text-[var(--error)]" role="alert">
                 {error}
               </p>
             ) : null}
-            <div className="p-4 pt-4">
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="h-11 w-full rounded-[14px] bg-[var(--primary)] text-[16px] font-semibold text-white disabled:opacity-60"
-              >
-                {submitting ? '登录中…' : '登录'}
-              </Button>
-            </div>
-          </div>
-        </form>
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="mt-2 h-[var(--button-lg-height)] w-full rounded-[16px] bg-[var(--primary)] text-[15px] font-semibold text-white disabled:opacity-60"
+            >
+              {submitting ? '登录中…' : '登录'}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   )

@@ -24,6 +24,10 @@ export interface ShareOrDownloadOptions {
   dialogTitle?: string
 }
 
+export interface ShareTextOptions extends ShareOrDownloadOptions {
+  title?: string
+}
+
 /**
  * 根据运行环境：原生端调用系统分享，浏览器端触发下载。
  * @param buffer 文件内容
@@ -60,4 +64,37 @@ export async function shareOrDownloadFile(
   a.download = fileName
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * 文本分享：原生端调用系统分享，浏览器端优先用 Web Share，缺失时回退到剪贴板。
+ * 返回 shared/copied 便于调用方提示用户。
+ */
+export async function shareText(
+  text: string,
+  options: ShareTextOptions = {}
+): Promise<'shared' | 'copied'> {
+  const { Capacitor } = await import('@capacitor/core')
+
+  if (Capacitor.isNativePlatform()) {
+    const { Share } = await import('@capacitor/share')
+    await Share.share({
+      title: options.title,
+      text,
+      dialogTitle: options.dialogTitle ?? options.title ?? '分享',
+    })
+    return 'shared'
+  }
+
+  if (navigator.share) {
+    await navigator.share({
+      title: options.title,
+      text,
+    })
+    return 'shared'
+  }
+
+  const { copyToClipboard } = await import('@/lib/clipboard')
+  await copyToClipboard(text)
+  return 'copied'
 }

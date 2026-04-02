@@ -22,15 +22,15 @@ export default function TemplateList({
         <li
           key={meta.id}
           className={cn(
-            compact ? 'flex items-center justify-between gap-3 rounded-xl py-2 pr-1' : 'card-soft flex flex-col gap-3 p-4'
+            compact ? 'flex items-start justify-between gap-3 rounded-xl py-2.5 pr-1' : 'card-soft flex flex-col gap-3 p-4'
           )}
         >
           <div className="flex min-w-0 flex-1 items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--primary-container)]/50 sm:h-11 sm:w-11 sm:rounded-[var(--radius-md)] sm:bg-gradient-to-br sm:from-[var(--primary-container)] sm:to-[var(--primary)]/15">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--primary-container)]/50 sm:h-11 sm:w-11 sm:rounded-[var(--radius-md)] sm:bg-gradient-to-br sm:from-[var(--primary-container)] sm:to-[var(--primary)]/15">
               <FileSpreadsheet className="h-4 w-4 text-[var(--primary)] sm:h-5 sm:w-5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className={cn(compact ? 'truncate text-[12px] font-medium' : 'text-label font-semibold', 'text-[var(--on-surface)]')}>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h2 className={cn(compact ? 'line-clamp-2 text-[13px] font-medium leading-5' : 'text-label font-semibold', 'text-[var(--on-surface)]')}>
                 {meta.name}
               </h2>
               {!compact && (
@@ -45,13 +45,13 @@ export default function TemplateList({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-full text-[var(--on-surface-muted)]"
+              className="mt-0.5 h-9 w-9 shrink-0 rounded-full text-[var(--on-surface-muted)]"
               onClick={() => onDownload(meta)}
               disabled={downloadingId !== null}
               aria-label={`下载 ${meta.fileName}`}
             >
               {downloadingId === meta.id ? (
-                <span className="text-[11px] text-[var(--on-surface-muted)]">…</span>
+                <span className="text-[12px] leading-none text-[var(--on-surface-muted)]">…</span>
               ) : (
                 <Download className="h-5 w-5" strokeWidth={1.5} />
               )}

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import path from 'path'
 import { seedLocalStorage } from './utils/storage'
 import { installFixedDate } from './utils/date'
-import { gotoHash, openGlobalMenu } from './utils/nav'
+import { gotoHash } from './utils/nav'
 import {
   FIXED_ISO,
   classEntity,
@@ -26,25 +26,24 @@ test('add subject, edit score, import and export grades', async ({ page }) => {
 
   await gotoHash(page, `/grades/${classEntity.id}`)
 
-  await openGlobalMenu(page)
-  await page.getByRole('menuitem', { name: '添加科目' }).click()
+  await page.getByRole('button', { name: '科目', exact: true }).click()
   await page.getByPlaceholder('科目名').fill('物理')
   await page.getByRole('button', { name: '添加' }).click()
-  await expect(page.getByText('物理')).toBeVisible()
+  await expect(page.getByRole('button', { name: '物理', exact: true })).toBeVisible()
 
-  const row = page.locator('tr', { hasText: '张三' })
-  await row.getByRole('button', { name: '—' }).first().click()
+  const row = page.getByTestId('grade-row-stu-1')
+  await row.click()
   await page.getByRole('textbox').fill('75')
-  await page.getByRole('textbox').press('Enter')
-  await expect(row.getByRole('button', { name: '75' })).toBeVisible()
+  await page.getByRole('button', { name: '保存' }).click()
+  await expect(row).toContainText('75')
 
-  await openGlobalMenu(page)
-  await page.getByRole('menuitem', { name: '导入成绩单' }).click()
+  await page.getByRole('button', { name: '打开成绩工具' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '导入成绩单' }).click()
   await page.setInputFiles('input[type="file"]', templatePath)
 
-  await openGlobalMenu(page)
-  await page.getByRole('menuitem', { name: '导出成绩单' }).click()
-  await page.getByLabel('导出全部').click()
+  await page.getByRole('button', { name: '打开成绩工具' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '导出成绩单' }).click()
+  await page.getByLabel(/导出全部/).click()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: '确定导出' }).click()
   const download = await downloadPromise

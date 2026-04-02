@@ -1,5 +1,5 @@
-import { FileDown, FileUp, type LucideIcon } from 'lucide-react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { type LucideIcon } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -43,7 +43,7 @@ function ActionRow({
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-4 rounded-2xl px-3 py-3 text-left disabled:opacity-30',
+        'flex min-h-[56px] w-full items-center gap-3 rounded-2xl px-3 py-3 text-left shadow-none disabled:opacity-30',
         destructive ? 'text-[var(--error)]' : 'text-[var(--on-surface)]'
       )}
     >
@@ -53,7 +53,7 @@ function ActionRow({
       )}>
         {Icon ? <Icon strokeWidth={1.5} className="h-[19px] w-[19px]" /> : null}
       </span>
-      <span className="text-[15px] font-medium tracking-tight">{label}</span>
+      <span className="inline-flex min-w-0 flex-1 items-center leading-5">{label}</span>
     </Button>
   )
 }
@@ -64,75 +64,98 @@ export default function GlobalActionDrawer({
   title,
   actions,
 }: GlobalActionDrawerProps) {
-  const importAction = actions.importAction ?? {
-    id: 'fallback-import',
-    label: '当前页面暂未接入导入',
-    icon: FileUp,
-    disabled: true,
-  }
-
-  const exportAction = actions.exportAction ?? {
-    id: 'fallback-export',
-    label: '当前页面暂未接入导出',
-    icon: FileDown,
-    disabled: true,
-  }
-
+  const importAction = actions.importAction
+  const exportAction = actions.exportAction
+  const exportListAction = actions.exportListAction
   const extraActions = actions.extraActions ?? []
+  const hasActions = Boolean(importAction || exportAction || exportListAction || extraActions.length > 0)
+
+  const renderAction = (action: GlobalActionItem) => (
+    <ActionRow
+      key={action.id}
+      {...action}
+      onSelect={() => {
+        action.onSelect?.()
+        onOpenChange(false)
+      }}
+    />
+  )
+
+  const renderNestedAction = (action: GlobalActionItem) => (
+      <div key={action.id} className="px-4 py-3">
+      <div className="flex items-center gap-3 pb-2">
+        <span className={cn(
+          'flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[var(--surface-2)] text-[var(--on-surface-muted)]',
+          action.destructive && 'bg-[var(--error-container)] text-[var(--error)]'
+        )}>
+          {action.icon ? <action.icon strokeWidth={1.5} className="h-[18px] w-[18px]" /> : null}
+        </span>
+        <div className="flex min-h-9 items-center">
+          <p className="text-[14px] font-semibold leading-5 text-[var(--on-surface)]">{action.label}</p>
+        </div>
+      </div>
+      <div className="space-y-1">
+        {(action.children ?? []).map((child) => (
+          <ActionRow
+            key={child.id}
+            {...child}
+            onSelect={() => {
+              child.onSelect?.()
+              onOpenChange(false)
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="left-0 right-0 top-auto bottom-0 max-h-[82vh] translate-x-0 translate-y-0 gap-0 rounded-t-[28px] rounded-b-none border-x-0 border-b-0 border-t border-[var(--outline)] bg-[var(--surface)]/90 p-0 shadow-[0_-2px_32px_rgba(0,0,0,0.07)] backdrop-blur-2xl [&>[data-slot=dialog-close]]:hidden">
-        {/* 拖拽指示条 */}
-        <div className="mx-auto mt-[10px] h-[5px] w-9 rounded-full bg-[var(--outline-variant)]" />
+      <DialogContent className="left-0 right-0 top-auto bottom-0 max-h-[82vh] translate-x-0 translate-y-0 gap-0 rounded-t-[30px] rounded-b-none border-x-0 border-b-0 border-t border-[rgba(255,253,252,0.62)] bg-[var(--surface)]/96 p-0 shadow-[0_-18px_40px_rgba(94,79,52,0.12)] backdrop-blur-[var(--glass-blur)] [&>[data-slot=dialog-close]]:hidden">
+        <div className="mx-auto mt-[12px] h-[5px] w-10 rounded-full bg-[var(--outline-variant)]" />
 
-        <DialogHeader className="px-5 pb-1 pt-4 text-left">
+        <DialogHeader className="px-5 pb-2 pt-4 text-left">
           <DialogTitle className="text-dialog-title text-[var(--on-surface)]">
             {title}
           </DialogTitle>
-          <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
-            导入、导出和当前页面的专属操作
-          </DialogDescription>
         </DialogHeader>
 
         <div className="overflow-y-auto px-4 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-2">
-          {/* 导入 / 导出组 */}
-          <div className="overflow-hidden rounded-[18px] border border-[var(--outline)] bg-[var(--surface)]">
-            <ActionRow
-              {...importAction}
-              onSelect={() => {
-                importAction.onSelect?.()
-                onOpenChange(false)
-              }}
-            />
-            <div className="mx-4 h-px bg-[var(--outline-variant)]" />
-            <ActionRow
-              {...exportAction}
-              onSelect={() => {
-                exportAction.onSelect?.()
-                onOpenChange(false)
-              }}
-            />
-          </div>
+          {hasActions ? (
+            <>
+              {(importAction || exportAction || exportListAction) ? (
+                <div className="overflow-hidden rounded-[22px] border border-[var(--outline)] bg-[var(--surface)]/96 shadow-[0_12px_28px_rgba(94,79,52,0.04)]">
+                  {importAction ? renderAction(importAction) : null}
+                  {importAction && (exportAction || exportListAction) ? (
+                    <div className="mx-4 h-px bg-[var(--outline-variant)]" />
+                  ) : null}
+                  {exportAction ? renderAction(exportAction) : null}
+                  {exportAction && exportListAction ? (
+                    <div className="mx-4 h-px bg-[var(--outline-variant)]" />
+                  ) : null}
+                  {exportListAction ? renderAction(exportListAction) : null}
+                </div>
+              ) : null}
 
-          {/* 页面专属操作组 */}
-          {extraActions.length > 0 ? (
-            <div className="mt-3 overflow-hidden rounded-[18px] border border-[var(--outline)] bg-[var(--surface)]">
-              {extraActions.map((item, i) => (
-                <>
-                  {i > 0 && <div key={`sep-${item.id}`} className="mx-4 h-px bg-[var(--outline-variant)]" />}
-                  <ActionRow
-                    key={item.id}
-                    {...item}
-                    onSelect={() => {
-                      item.onSelect?.()
-                      onOpenChange(false)
-                    }}
-                  />
-                </>
-              ))}
+              {extraActions.length > 0 ? (
+                <div className={cn(
+                  'overflow-hidden rounded-[22px] border border-[var(--outline)] bg-[var(--surface)]/96 shadow-[0_12px_28px_rgba(94,79,52,0.04)]',
+                  (importAction || exportAction || exportListAction) && 'mt-3'
+                )}>
+                  {extraActions.map((item, index) => (
+                    <div key={item.id}>
+                      {index > 0 ? <div className="mx-4 h-px bg-[var(--outline-variant)]" /> : null}
+                      {item.children?.length ? renderNestedAction(item) : renderAction(item)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="rounded-[22px] border border-dashed border-[var(--outline)] px-4 py-6 text-center text-[13px] text-[var(--on-surface-muted)]">
+              当前页面没有可执行的快捷操作
             </div>
-          ) : null}
+          )}
         </div>
       </DialogContent>
     </Dialog>

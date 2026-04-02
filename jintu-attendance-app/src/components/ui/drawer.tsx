@@ -1,49 +1,71 @@
 'use client'
 
 import * as React from 'react'
-import { Drawer as VaulDrawer } from 'vaul'
 import { X } from 'lucide-react'
+import { Sheet as TamaguiSheet } from 'tamagui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
-const Drawer = VaulDrawer.Root
+type DrawerProps = React.ComponentProps<typeof TamaguiSheet> & {
+  shouldScaleBackground?: boolean
+}
 
-const DrawerTrigger = VaulDrawer.Trigger
-
-const DrawerPortal = VaulDrawer.Portal
-
-const DrawerClose = VaulDrawer.Close
+function Drawer({ shouldScaleBackground: _shouldScaleBackground, ...props }: DrawerProps) {
+  return (
+    <TamaguiSheet
+      modal
+      dismissOnOverlayPress
+      dismissOnSnapToBottom
+      snapPointsMode="percent"
+      snapPoints={[88]}
+      position={0}
+      zIndex={100}
+      unmountChildrenWhenHidden
+      {...props}
+    />
+  )
+}
 
 function DrawerOverlay({
   className,
+  style,
   ...props
-}: React.ComponentProps<typeof VaulDrawer.Overlay>) {
+}: React.ComponentProps<typeof TamaguiSheet.Overlay>) {
   return (
-    <VaulDrawer.Overlay
-      className={cn('fixed inset-0 z-[100] bg-black/45', className)}
-      {...props}
+    <TamaguiSheet.Overlay
+      data-slot="drawer-overlay"
+      className={cn('fixed inset-0 z-[100] bg-[rgba(31,34,31,0.34)]', className)}
+      zIndex={100}
+      style={style}
+      {...(props as object)}
     />
   )
 }
 
 function DrawerContent({
   className,
+  overlayClassName,
+  overlayStyle,
   children,
+  style,
   ...props
-}: React.ComponentProps<typeof VaulDrawer.Content>) {
+}: React.ComponentProps<typeof TamaguiSheet.Frame> & { overlayClassName?: string; overlayStyle?: React.CSSProperties }) {
   return (
-    <DrawerPortal>
-      <DrawerOverlay />
-      <VaulDrawer.Content
+    <>
+      <DrawerOverlay className={overlayClassName} style={overlayStyle} />
+      <TamaguiSheet.Frame
+        data-slot="drawer-content"
         className={cn(
-          'fixed inset-x-0 bottom-0 top-[max(env(safe-area-inset-top,0px),32px)] z-[100] flex flex-col rounded-t-[20px] bg-[var(--surface)] shadow-[0_-4px_24px_rgba(0,0,0,0.12)] outline-none pb-[env(safe-area-inset-bottom,0px)] [will-change:transform]',
+          'fixed inset-x-0 bottom-0 top-[max(env(safe-area-inset-top,0px),24px)] z-[100] flex flex-col rounded-t-[30px] border-x border-t border-[rgba(255,253,252,0.62)] bg-[var(--surface)] shadow-[0_-18px_44px_rgba(94,79,52,0.14)] outline-none pb-[env(safe-area-inset-bottom,0px)] [will-change:transform]',
           className
         )}
-        {...props}
+        zIndex={101}
+        style={style}
+        {...(props as object)}
       >
         {children}
-      </VaulDrawer.Content>
-    </DrawerPortal>
+      </TamaguiSheet.Frame>
+    </>
   )
 }
 
@@ -74,6 +96,9 @@ function DrawerTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingEl
 /** 带标题栏 + 关闭按钮的抽屉内容区，与原 BottomSheetContent 布局一致，便于替换 */
 interface DrawerContentWithHeaderProps {
   className?: string
+  overlayClassName?: string
+  overlayStyle?: React.CSSProperties
+  style?: React.CSSProperties
   title?: string
   showCloseButton?: boolean
   onClose?: () => void
@@ -82,31 +107,40 @@ interface DrawerContentWithHeaderProps {
 
 function DrawerContentWithHeader({
   className,
+  overlayClassName,
+  overlayStyle,
+  style,
   children,
   title = '我的',
   showCloseButton = true,
   onClose,
 }: DrawerContentWithHeaderProps) {
   return (
-    <DrawerContent className={cn('flex min-h-0 flex-col', className)}>
-      {/* 预留顶部安全区（状态栏/刘海），避免「我的」标题栏顶进状态栏；无 safe-area 时至少 24px */}
+    <DrawerContent
+      overlayClassName={overlayClassName}
+      overlayStyle={overlayStyle}
+      className={cn('flex min-h-0 flex-col', className)}
+      style={style}
+    >
+      <div className="flex justify-center pt-[max(env(safe-area-inset-top,0px),14px)]">
+        <div className="h-1.5 w-11 rounded-full bg-[var(--outline-variant)]" aria-hidden />
+      </div>
       <div
-        className="flex shrink-0 items-center justify-between border-b border-[var(--outline-variant)] bg-transparent px-4 py-3 pt-[max(env(safe-area-inset-top,0px),24px)]"
+        className="flex shrink-0 items-center justify-between border-b border-[var(--outline-variant)] bg-transparent px-4 py-3"
       >
         <div className="w-10 shrink-0" aria-hidden />
         <DrawerTitle className="min-w-0 flex-1 text-center">{title}</DrawerTitle>
         {showCloseButton && onClose ? (
-          <DrawerClose asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="-mr-2 h-10 w-10 shrink-0 rounded-full bg-[var(--surface-2)] text-[var(--on-surface-muted)]"
-              aria-label="关闭"
-            >
-              <X className="h-5 w-5" strokeWidth={2} />
-            </Button>
-          </DrawerClose>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="-mr-2 h-10 w-10 shrink-0 rounded-full bg-[var(--surface-2)] text-[var(--on-surface-muted)]"
+            aria-label="关闭"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" strokeWidth={2} />
+          </Button>
         ) : (
           <div className="w-10 shrink-0" aria-hidden />
         )}
@@ -120,11 +154,8 @@ function DrawerContentWithHeader({
 
 export {
   Drawer,
-  DrawerPortal,
   DrawerOverlay,
-  DrawerTrigger,
   DrawerContent,
-  DrawerClose,
   DrawerHeader,
   DrawerTitle,
   DrawerContentWithHeader,

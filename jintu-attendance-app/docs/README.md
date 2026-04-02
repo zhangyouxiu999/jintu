@@ -1,14 +1,12 @@
 # 文档索引
 
-当前项目文档统一收敛到 `docs/` 目录，按主题划分如下。
+当前项目正式维护只保留 2 份文档：产品文档和技术文档。
 
-## 当前文档
+## 正式维护
 
-- [development.md](./development.md)：开发环境、目录结构、常用脚本与日常开发流程
-- [deployment.md](./deployment.md)：构建、Capacitor 同步、Android / iOS 运行与打包、更新保数说明
-- [architecture.md](./architecture.md)：项目架构、数据存储、路由、原生能力与平台兼容性
-- [commercial.md](./commercial.md)：售卖账号模式、交付方式与商用路线建议
+- [PRD.md](./PRD.md)：当前版本唯一的产品真值文档，已合并产品定位、页面交互和商用交付边界
+- [architecture.md](./architecture.md)：技术结构、开发约定、构建同步与原生打包说明
 
-## 历史归档
+## 历史与追溯
 
-- [archive/README.md](./archive/README.md)：历史检查报告与清理记录
+- [archive/README.md](./archive/README.md)：历史审查、阶段性报告、旧原型与清理记录归档入口

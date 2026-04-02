@@ -1,18 +1,19 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useLocation, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { storage } from '@/store/storage'
-import AppLayout from './AppLayout'
+import AppLayout, { useCurrentClassId } from './AppLayout'
+import { useClassList } from '@/hooks/useClassList'
 
 const AttendanceEntry = lazy(() => import('@/pages/AttendanceEntry'))
-const ClassList = lazy(() => import('@/pages/ClassList'))
 const Attendance = lazy(() => import('@/pages/Attendance'))
-const History = lazy(() => import('@/pages/History'))
-const Schedule = lazy(() => import('@/pages/Schedule'))
+const ClassList = lazy(() => import('@/pages/ClassList'))
+const ClassSetupFlow = lazy(() => import('@/pages/ClassSetupFlow'))
 const Grades = lazy(() => import('@/pages/Grades'))
-const Settings = lazy(() => import('@/pages/Settings'))
-const Templates = lazy(() => import('@/pages/Templates'))
+const History = lazy(() => import('@/pages/History'))
 const Login = lazy(() => import('@/pages/Login'))
-const ClassPicker = lazy(() => import('@/pages/ClassPicker'))
+const MorePage = lazy(() => import('@/pages/MorePage'))
+const Schedule = lazy(() => import('@/pages/Schedule'))
+const StudentListPage = lazy(() => import('@/pages/StudentListPage'))
 
 function RequireAuth() {
   if (!storage.loadAuth()) {
@@ -21,27 +22,41 @@ function RequireAuth() {
   return <Outlet />
 }
 
-/**
- * 路由切换无动画，直接渲染当前 location 对应页面。
- */
+function RedirectToCurrentClass({ basePath }: { basePath: 'history' | 'grades' | 'schedule' }) {
+  const { list, loading } = useClassList()
+  const { currentClassId } = useCurrentClassId()
+  const effectiveClassId = list.find((item) => item.id === currentClassId)?.id ?? list[0]?.id ?? null
+
+  if (loading) {
+    return <div className="min-h-[40vh]" aria-busy="true" />
+  }
+
+  if (!effectiveClassId) {
+    return <Navigate to="/" replace />
+  }
+
+  return <Navigate to={`/${basePath}/${effectiveClassId}`} replace />
+}
+
 export default function AnimatedRoutes() {
   const location = useLocation()
   const [displayLocation, setDisplayLocation] = useState(location)
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       void import('@/pages/AttendanceEntry')
-      void import('@/pages/ClassList')
       void import('@/pages/Attendance')
-      void import('@/pages/History')
-      void import('@/pages/Schedule')
+      void import('@/pages/ClassList')
+      void import('@/pages/ClassSetupFlow')
       void import('@/pages/Grades')
-      void import('@/pages/Settings')
-      void import('@/pages/Templates')
+      void import('@/pages/History')
       void import('@/pages/Login')
-      void import('@/pages/ClassPicker')
-    }, 500)
-    return () => clearTimeout(t)
+      void import('@/pages/MorePage')
+      void import('@/pages/Schedule')
+      void import('@/pages/StudentListPage')
+    }, 400)
+
+    return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -55,18 +70,21 @@ export default function AnimatedRoutes() {
           <Routes location={displayLocation}>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>
+              <Route path="/class-setup" element={<ClassSetupFlow />} />
               <Route element={<AppLayout />}>
                 <Route index element={<AttendanceEntry />} />
                 <Route path="classes" element={<ClassList />} />
+                <Route path="more" element={<MorePage />} />
                 <Route path="attendance/:classId" element={<Attendance />} />
-                <Route path="history" element={<History />} />
-                <Route path="history/:classId" element={<History />} />
-                <Route path="schedule" element={<ClassPicker title="课程表" basePath="/schedule" />} />
+                <Route path="students/:classId" element={<StudentListPage />} />
+                <Route path="schedule" element={<RedirectToCurrentClass basePath="schedule" />} />
                 <Route path="schedule/:classId" element={<Schedule />} />
-                <Route path="grades" element={<ClassPicker title="成绩单" basePath="/grades" />} />
+                <Route path="grades" element={<RedirectToCurrentClass basePath="grades" />} />
                 <Route path="grades/:classId" element={<Grades />} />
-                <Route path="templates" element={<Templates />} />
-                <Route path="settings" element={<Settings />} />
+                <Route path="history" element={<RedirectToCurrentClass basePath="history" />} />
+                <Route path="history/:classId" element={<History />} />
+                <Route path="settings" element={<Navigate to="/more" replace />} />
+                <Route path="templates" element={<Navigate to="/more" replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Route>

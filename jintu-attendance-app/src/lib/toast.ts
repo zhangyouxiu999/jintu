@@ -25,6 +25,7 @@ export function showToast(message: string, options?: { variant?: ToastVariant; d
   el.style.width = 'max-content'
   el.style.minWidth = '72px'
   el.style.maxWidth = 'min(68vw, 240px)'
+  el.style.pointerEvents = 'none'
   el.style.backgroundColor = 'var(--surface)'
   el.style.color = 'var(--on-surface)'
   el.style.border = '1px solid var(--outline)'

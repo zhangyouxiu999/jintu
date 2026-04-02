@@ -4,37 +4,31 @@ import { History as HistoryIcon, Download, ChevronDown, ChevronUp } from 'lucide
 import * as attendanceStore from '@/store/attendance'
 import * as classesStore from '@/store/classes'
 import * as studentsStore from '@/store/students'
-import type { AttendanceSnapshot } from '@/types'
+import type { ConfirmedAttendanceRecord } from '@/types'
 import { buildReportTextFromSnapshot, getReportDateLabelFromDate } from '@/lib/reportText'
 import { PERIOD_NAMES } from '@/lib/period'
+import { FormSheet, InlineMetaRow, ListSection, PageActionRow, SecondaryButton, SimpleListRow } from '@/components/ui/app-ui'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import { EmptyStateCard, LoadingStateCard } from '@/components/ui/mobile-ui'
 import { showToast } from '@/lib/toast'
 
 export default function History() {
   const { classId } = useParams<{ classId?: string }>()
   const navigate = useNavigate()
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([])
-  const [list, setList] = useState<AttendanceSnapshot[]>([])
+  const [list, setList] = useState<ConfirmedAttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedDate, setExpandedDate] = useState<string | null>(null)
-  const [detailSnap, setDetailSnap] = useState<AttendanceSnapshot | null>(null)
+  const [detailSnap, setDetailSnap] = useState<ConfirmedAttendanceRecord | null>(null)
   const [studentNames, setStudentNames] = useState<Record<string, string>>({})
-  const [exportConfirmOpen, setExportConfirmOpen] = useState(false)
   const classButtonsRef = useRef<HTMLDivElement>(null)
   const snapshotListRef = useRef<HTMLUListElement>(null)
 
   const load = useCallback(async () => {
     const all = await classesStore.getAll()
-    setClasses(all.map((c) => ({ id: c.id, name: c.name })))
+    setClasses(all.map((classEntity) => ({ id: classEntity.id, name: classEntity.name })))
     if (classId) {
-      const snapshots = await attendanceStore.listByClass(classId)
+      const snapshots = await attendanceStore.listConfirmedByClass(classId)
       setList(snapshots)
     } else {
       setList([])
@@ -48,16 +42,16 @@ export default function History() {
   }, [load])
 
   useEffect(() => {
-    if (classId) {
-      studentsStore.getByClassId(classId).then((students) => {
-        const names: Record<string, string> = {}
-        for (const s of students) names[s.id] = s.name
-        setStudentNames(names)
-      })
-    }
+    if (!classId) return
+    studentsStore.getByClassId(classId).then((students) => {
+      const names: Record<string, string> = {}
+      for (const student of students) names[student.id] = student.name
+      setStudentNames(names)
+    })
   }, [classId])
 
-  const currentClass = classId ? classes.find((c) => c.id === classId) : null
+  const currentClass = classId ? classes.find((classEntity) => classEntity.id === classId) : null
+  const historyDateCount = new Set(list.map((item) => item.date)).size
 
   const handleExport = useCallback(async () => {
     const fileName = `${currentClass?.name ?? '考勤'}历史考勤.xlsx`
@@ -65,19 +59,19 @@ export default function History() {
       const XLSX = await import('xlsx')
       const headers = ['日期', '时段', '应到', '实到', '请假', '晚到', '未到', '请假名单', '晚到名单', '未到名单']
       const rows: (string | number)[][] = [headers]
-      for (const s of list) {
-        const ids = Object.keys(s.statusMap)
+      for (const snapshot of list) {
+        const ids = Object.keys(snapshot.statusMap)
         const total = ids.length
-        const present = ids.filter((id) => s.statusMap[id] === 1).length
-        const leaveIds = ids.filter((id) => s.statusMap[id] === 2)
-        const lateIds = ids.filter((id) => s.statusMap[id] === 3)
-        const absentIds = ids.filter((id) => s.statusMap[id] === 0)
+        const present = ids.filter((id) => snapshot.statusMap[id] === 1).length
+        const leaveIds = ids.filter((id) => snapshot.statusMap[id] === 2)
+        const lateIds = ids.filter((id) => snapshot.statusMap[id] === 3)
+        const absentIds = ids.filter((id) => snapshot.statusMap[id] === 0)
         const leaveNames = leaveIds.map((id) => studentNames[id] ?? id).join(' ')
         const lateNames = lateIds.map((id) => studentNames[id] ?? id).join(' ')
         const absentNames = absentIds.map((id) => studentNames[id] ?? id).join(' ')
         rows.push([
-          s.date,
-          PERIOD_NAMES[s.period] ?? '',
+          snapshot.date,
+          PERIOD_NAMES[snapshot.period] ?? '',
           total,
           present,
           leaveIds.length,
@@ -102,145 +96,153 @@ export default function History() {
     }
   }, [currentClass?.name, list, studentNames])
 
+  if (classId && !loading && !currentClass) {
+    return <EmptyStateCard icon={HistoryIcon} title="班级不存在" iconTone="primary" />
+  }
+
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <main className="px-4 py-4">
-        {classId && list.length > 0 && (
-          <div className="mb-3 flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-[var(--radius-sm)] border-[var(--outline)] px-3 text-[13px] text-[var(--on-surface)]"
-              onClick={() => setExportConfirmOpen(true)}
-            >
-              <Download className="mr-1 h-4 w-4" /> 导出
-            </Button>
-          </div>
-        )}
-        {!classId && classes.length > 0 && (
-          <div className="mb-3 rounded-2xl bg-[var(--surface)] border border-[var(--outline-variant)] p-4">
-            <p className="text-[15px] font-semibold tracking-tight text-[var(--on-surface)]">选择班级</p>
-            <p className="mt-0.5 text-[13px] text-[var(--on-surface-muted)]">查看该班级已确认的考勤记录</p>
-            <div ref={classButtonsRef} className="mt-3 flex flex-wrap gap-2">
-              {classes.map((c) => (
-                <Button key={c.id} variant="outline" size="sm" className="h-9 rounded-[12px] border-[var(--outline)] bg-[var(--surface)] px-4 text-[13px] font-medium text-[var(--on-surface-variant)]" onClick={() => navigate(`/history/${c.id}`)}>{c.name}</Button>
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      {classId && currentClass ? (
+        <>
+          <PageActionRow className="items-center">
+            <SecondaryButton variant="outline" className="px-4" onClick={() => navigate(`/attendance/${classId}`)}>
+              返回点名
+            </SecondaryButton>
+            <InlineMetaRow
+              left={<span>{historyDateCount} 天 · {list.length} 条记录</span>}
+              right={<span>{currentClass.name}</span>}
+              className="min-w-0 flex-1 rounded-full border border-[var(--outline)]/70 bg-[var(--surface)] px-3 py-2"
+            />
+          {list.length > 0 ? (
+            <SecondaryButton variant="outline" className="px-4" onClick={() => void handleExport()}>
+              <Download className="mr-1.5 h-4 w-4" />
+              导出
+            </SecondaryButton>
+          ) : null}
+          </PageActionRow>
+        </>
+      ) : null}
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        {!classId && classes.length > 0 ? (
+          <ListSection>
+            <div ref={classButtonsRef} className="grid grid-cols-1 gap-0 sm:grid-cols-2">
+              {classes.map((classEntity) => (
+                <SimpleListRow
+                  key={classEntity.id}
+                  title={classEntity.name}
+                  description={undefined}
+                  onClick={() => navigate(`/history/${classEntity.id}`)}
+                />
               ))}
             </div>
-          </div>
-        )}
+          </ListSection>
+        ) : null}
 
-        {classId && (
-          <>
-            {loading ? (
-              <div className="min-h-[120px] py-12 text-center" aria-busy="true" />
-            ) : list.length === 0 ? (
-              <div className="rounded-[22px] bg-[var(--surface)] border border-[var(--outline-variant)] py-14 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/60">
-                  <HistoryIcon className="h-7 w-7 text-[var(--primary)]" strokeWidth={1.5} />
-                </div>
-                <p className="text-[17px] font-semibold tracking-tight text-[var(--on-surface)]">暂无已确认考勤记录</p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--on-surface-muted)] px-6">在点名页点击「报告」→「复制并关闭」后会出现在此</p>
+        {classId ? (
+          loading ? (
+            <LoadingStateCard title="正在载入历史考勤" className="min-h-[200px]" />
+          ) : list.length === 0 ? (
+            <EmptyStateCard
+              icon={HistoryIcon}
+              title="暂无记录"
+              actionLabel="返回点名页"
+              onAction={() => navigate(`/attendance/${classId}`)}
+              iconTone="primary"
+            />
+          ) : (
+            <ListSection className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <ul ref={snapshotListRef} className="space-y-2">
+                  {(() => {
+                    const byDate: Record<string, ConfirmedAttendanceRecord[]> = {}
+                    for (const snapshot of list) {
+                      if (!byDate[snapshot.date]) byDate[snapshot.date] = []
+                      byDate[snapshot.date].push(snapshot)
+                    }
+                    const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a))
+                    return dates.map((date) => {
+                      const periods = byDate[date]
+                      const isExpanded = expandedDate === date
+                      return (
+                        <li key={date} className="overflow-hidden border-b border-[var(--outline-variant)] last:border-b-0">
+                          <div className="flex items-center gap-3 px-3 py-2.5">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setExpandedDate(isExpanded ? null : date)}
+                              className="flex h-auto min-h-[48px] min-w-0 flex-1 items-center justify-between rounded-[14px] px-3 py-3 text-left"
+                            >
+                              <span className="text-[15px] font-semibold text-[var(--on-surface)]">{date}</span>
+                              {isExpanded ? (
+                                <ChevronUp aria-hidden="true" className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} />
+                              ) : (
+                                <ChevronDown aria-hidden="true" className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} />
+                              )}
+                            </Button>
+                            <span className="shrink-0 text-[12px] text-[var(--on-surface-muted)]">{periods.length} 个时段</span>
+                          </div>
+                          {isExpanded ? (
+                            <div className="border-t border-[var(--outline-variant)] bg-[var(--surface-2)]/45 px-3 py-2">
+                              <ul className="space-y-2">
+                                {periods.map((snapshot) => (
+                                  <li key={snapshot.id} className="flex items-center gap-3">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      onClick={() => setDetailSnap(snapshot)}
+                                      className="flex h-auto min-h-[46px] min-w-0 flex-1 items-center justify-start rounded-[14px] bg-[var(--surface)] px-3 py-3 text-left shadow-[inset_0_0_0_1px_rgba(108,114,107,0.08)]"
+                                    >
+                                      <span className="text-[14px] font-medium text-[var(--on-surface-variant)]">
+                                        {PERIOD_NAMES[snapshot.period] ?? '—'}
+                                      </span>
+                                    </Button>
+                                    <span className="shrink-0 text-[12px] text-[var(--on-surface-muted)]">
+                                      实到 {Object.values(snapshot.statusMap).filter((status) => status === 1).length} 人
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+                        </li>
+                      )
+                    })
+                  })()}
+                </ul>
               </div>
-            ) : (
-              <ul ref={snapshotListRef} className="space-y-2">
-                {(() => {
-                  const byDate: Record<string, AttendanceSnapshot[]> = {}
-                  for (const snap of list) {
-                    if (!byDate[snap.date]) byDate[snap.date] = []
-                    byDate[snap.date].push(snap)
-                  }
-                  const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a))
-                  return dates.map((date) => {
-                    const periods = byDate[date]
-                    const isExpanded = expandedDate === date
-                    return (
-                      <li key={date} className="rounded-[18px] bg-[var(--surface)] border border-[var(--outline-variant)] overflow-hidden">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setExpandedDate(isExpanded ? null : date)}
-                          className="flex min-h-[50px] w-full items-center justify-between px-4 py-3.5 text-left h-auto"
-                        >
-                          <span className="text-[15px] font-semibold text-[var(--on-surface)]">{date}</span>
-                          {isExpanded ? <ChevronUp className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} /> : <ChevronDown className="h-[15px] w-[15px] text-[var(--on-surface-muted)]" strokeWidth={1.5} />}
-                        </Button>
-                        {isExpanded && (
-                          <ul className="border-t border-[var(--outline-variant)]/80 bg-[var(--surface-2)]/60 px-2 pb-1.5 pt-0.5">
-                            {periods.map((snap, i) => (
-                              <li key={snap.id} className={i > 0 ? 'border-t border-[var(--outline-variant)]/60' : ''}>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  onClick={() => setDetailSnap(snap)}
-                                  className="flex min-h-[44px] w-full items-center justify-between rounded-[14px] px-3 py-2.5 text-left h-auto"
-                                >
-                                  <span className="text-[14px] font-medium text-[var(--on-surface-variant)]">{PERIOD_NAMES[snap.period] ?? '—'}</span>
-                                  <span className="text-[12px] tabular-nums text-[var(--on-surface-muted)]">实到 {Object.values(snap.statusMap).filter((s) => s === 1).length} 人</span>
-                                </Button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </li>
-                    )
-                  })
-                })()}
-              </ul>
-            )}
-          </>
-        )}
+            </ListSection>
+          )
+        ) : null}
 
-        {!classId && classes.length === 0 && !loading && (
-          <div className="rounded-[22px] bg-[var(--surface)] border border-[var(--outline-variant)] py-14 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/60">
-              <HistoryIcon className="h-7 w-7 text-[var(--primary)]" strokeWidth={1.5} />
+        {!classId && classes.length === 0 && !loading ? (
+          <EmptyStateCard
+            icon={HistoryIcon}
+            title="暂无班级"
+            iconTone="primary"
+          />
+        ) : null}
+
+        {detailSnap ? (
+          <FormSheet
+            open={!!detailSnap}
+            onOpenChange={(open) => !open && setDetailSnap(null)}
+            title="考勤报告"
+            className="max-h-[80dvh]"
+          >
+            <div className="text-[12px] font-medium text-[var(--on-surface-muted)]">
+              {getReportDateLabelFromDate(detailSnap.date, detailSnap.period)}
             </div>
-            <p className="text-[17px] font-semibold tracking-tight text-[var(--on-surface)]">暂无班级</p>
-            <p className="mt-1.5 text-[13px] text-[var(--on-surface-muted)]">请先新增班级并完成考勤确认</p>
-          </div>
-        )}
-
-        <Dialog open={exportConfirmOpen} onOpenChange={setExportConfirmOpen}>
-          <DialogContent>
-            <DialogHeader className="text-center sm:text-center pb-2">
-              <DialogTitle className="text-dialog-title text-[var(--on-surface)]">确认导出</DialogTitle>
-              <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
-                将当前班级历史考勤导出为 Excel 文件，共 {list.length} 条记录。
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setExportConfirmOpen(false)} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  setExportConfirmOpen(false)
-                  await handleExport()
-                }}
-                className="h-8 min-h-0 px-2.5 text-[11px]"
-              >
-                确认导出
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {detailSnap && (
-          <Dialog open={!!detailSnap} onOpenChange={(open) => !open && setDetailSnap(null)}>
-            <DialogContent className="p-0">
-              <DialogHeader className="shrink-0 border-b border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-3 text-center sm:text-center">
-                <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">考勤报告</DialogTitle>
-                <DialogDescription className="text-caption text-[var(--on-surface-muted)]">{getReportDateLabelFromDate(detailSnap.date, detailSnap.period)}</DialogDescription>
-              </DialogHeader>
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-                <pre className="whitespace-pre-wrap font-mono text-[14px] leading-relaxed text-[var(--on-surface)]">
+            <div className="space-y-4">
+              <div className="max-h-[48dvh] overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--outline-variant)] bg-[var(--surface-2)] px-4 py-3">
+                <pre className="whitespace-pre-wrap text-[14px] leading-6 text-[var(--on-surface)]">
                   {buildReportTextFromSnapshot(currentClass?.name ?? '', detailSnap.date, detailSnap.period, detailSnap.statusMap, studentNames)}
                 </pre>
               </div>
-              <div className="shrink-0 flex justify-end gap-2 border-t border-[var(--outline-variant)] bg-[var(--surface)] px-4 py-2">
-                <Button variant="outline" size="sm" onClick={() => setDetailSnap(null)} className="h-8 min-h-0 px-2.5 text-[11px]">关闭</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setDetailSnap(null)} className="flex-1">关闭</Button>
                 <Button
-                  size="sm"
-                  className="h-8 min-h-0 px-2.5 text-[11px]"
+                  className="flex-1"
                   onClick={async () => {
                     const text = buildReportTextFromSnapshot(currentClass?.name ?? '', detailSnap.date, detailSnap.period, detailSnap.statusMap, studentNames)
                     try {
@@ -255,10 +257,10 @@ export default function History() {
                   复制
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </main>
+            </div>
+          </FormSheet>
+        ) : null}
+      </div>
     </div>
   )
 }

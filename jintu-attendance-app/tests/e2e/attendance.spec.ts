@@ -1,53 +1,47 @@
 import { test, expect } from '@playwright/test'
 import { seedLocalStorage } from './utils/storage'
 import { installFixedDate } from './utils/date'
-import { gotoHash, openGlobalMenu } from './utils/nav'
+import { gotoHash } from './utils/nav'
 import { FIXED_ISO, classEntity, students } from './utils/fixtures'
 
-const studentImportText = '赵六\n孙七'
+function buildLargeStudentSeed(count: number) {
+  const largeClass = {
+    ...classEntity,
+    id: 'class-large',
+    name: '大班',
+    studentOrder: Array.from({ length: count }, (_, index) => `stu-large-${index + 1}`),
+  }
+  const largeStudents = Array.from({ length: count }, (_, index) => ({
+    id: `stu-large-${index + 1}`,
+    name: `学生${String(index + 1).padStart(3, '0')}`,
+    classId: largeClass.id,
+    sortIndex: index + 1,
+    createdAt: '2026-03-10T08:00:00.000Z',
+    updatedAt: '2026-03-10T08:00:00.000Z',
+  }))
+  return { largeClass, largeStudents }
+}
 
-test('import students, mark attendance, reset, export', async ({ page }) => {
+test('attendance status update and report content stay consistent', async ({ page }) => {
   await seedLocalStorage(page, {
     auth: true,
     classes: [classEntity],
-    students: [],
+    students,
     currentClassId: classEntity.id,
   })
   await installFixedDate(page, FIXED_ISO)
 
   await gotoHash(page, `/attendance/${classEntity.id}`)
-  await expect(page.getByRole('button', { name: '添加学生' })).toBeVisible()
+  await expect(page.getByText('张三')).toBeVisible()
 
-  await openGlobalMenu(page)
-  await page.getByRole('menuitem', { name: '导入学生名单' }).click()
-
-  await page.locator('textarea').fill(studentImportText)
-  await page.getByRole('button', { name: /导入（/ }).click()
-  await expect(page.getByText('赵六')).toBeVisible()
-  await expect(page.getByText('孙七')).toBeVisible()
-
-  // 标记已到
-  const zhaoRow = page.locator('div[role="button"]', { hasText: '赵六' }).first()
-  await zhaoRow.locator('button', { hasText: '已到' }).first().click()
+  const zhangRow = page.getByTestId('attendance-row-stu-1')
+  await zhangRow.getByRole('button', { name: '已到' }).click()
   await expect(page.getByRole('button', { name: '筛选：实到' })).toContainText('1')
 
-  // 一键全勤
-  await openGlobalMenu(page)
-  await page.getByRole('menuitem', { name: '一键全勤' }).click()
-  await expect(page.getByRole('button', { name: '筛选：实到' })).toContainText('2')
-
-  // 重置考勤
-  await openGlobalMenu(page)
-  await page.getByRole('menuitem', { name: '重置考勤' }).click()
-  await page.getByRole('button', { name: '确定重置' }).click()
-  await expect(page.getByRole('button', { name: '筛选：实到' })).toContainText('0')
-
-  // 导出学生名单
-  await openGlobalMenu(page)
-  const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('menuitem', { name: '导出学生名单' }).click()
-  const download = await downloadPromise
-  await expect(download.suggestedFilename()).toContain('学生名单')
+  await page.getByRole('button', { name: '生成报告' }).click()
+  await expect(page.locator('pre')).toContainText('实到: 1人')
+  await expect(page.locator('pre')).toContainText('未到: 李四 王五')
+  await page.getByRole('dialog').getByRole('button', { name: '关闭' }).first().click()
 })
 
 test('add announcement and view', async ({ page }) => {
@@ -61,11 +55,40 @@ test('add announcement and view', async ({ page }) => {
 
   await gotoHash(page, `/attendance/${classEntity.id}`)
 
-  await openGlobalMenu(page)
-  await page.getByRole('menuitem', { name: '添加公告' }).click()
+  await page.getByRole('button', { name: '发布公告' }).click()
   await page.getByPlaceholder('公告 1').fill('测试公告')
-  await page.getByRole('button', { name: '发布' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '发布', exact: true }).click()
 
   await page.getByRole('button', { name: '展开公告' }).click()
-  await expect(page.getByText('测试公告')).toBeVisible()
+  await expect(page.locator('span').filter({ hasText: /^测试公告$/ })).toBeVisible()
+})
+
+test('filtering remains usable with a large class list', async ({ page }) => {
+  const { largeClass, largeStudents } = buildLargeStudentSeed(240)
+
+  await seedLocalStorage(page, {
+    auth: true,
+    classes: [largeClass],
+    students: largeStudents,
+    currentClassId: largeClass.id,
+  })
+  await installFixedDate(page, FIXED_ISO)
+
+  await gotoHash(page, `/attendance/${largeClass.id}`)
+  await expect(page.getByText('学生001')).toBeVisible()
+
+  await page.getByTestId('attendance-row-stu-large-1').getByRole('button', { name: '已到' }).click()
+  await page.getByTestId('attendance-row-stu-large-2').getByRole('button', { name: '请假' }).click()
+  await page.getByTestId('attendance-row-stu-large-3').getByRole('button', { name: '晚到' }).click()
+
+  await page.getByRole('button', { name: '筛选：实到' }).click()
+  await expect(page.getByTestId('attendance-row-stu-large-1')).toBeVisible()
+  await expect(page.getByTestId('attendance-row-stu-large-2')).toHaveCount(0)
+
+  await page.getByRole('button', { name: '筛选：请假' }).click()
+  await expect(page.getByTestId('attendance-row-stu-large-2')).toBeVisible()
+  await expect(page.getByTestId('attendance-row-stu-large-1')).toHaveCount(0)
+
+  await page.getByRole('button', { name: '筛选：应到' }).click()
+  await expect(page.getByTestId('attendance-row-stu-large-1')).toBeVisible()
 })

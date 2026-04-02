@@ -15,7 +15,18 @@ export const students = [
   { id: 'stu-3', name: '王五', classId, sortIndex: 3, createdAt: '2026-03-10T08:00:00.000Z', updatedAt: '2026-03-10T08:00:00.000Z' },
 ]
 
-export const attendanceSnapshots = [
+export const attendanceDrafts = [
+  {
+    id: 'draft-1',
+    classId,
+    date: '2026-03-18',
+    period: 0,
+    statusMap: { 'stu-1': 0, 'stu-2': 0, 'stu-3': 0 },
+    updatedAt: '2026-03-18T08:00:00.000Z',
+  },
+]
+
+export const confirmedAttendanceRecords = [
   {
     id: 'att-1',
     classId,

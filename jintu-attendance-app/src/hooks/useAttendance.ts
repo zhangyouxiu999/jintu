@@ -6,7 +6,7 @@ export function useAttendance(classId: string | undefined) {
   const saveStatus = useCallback(
     async (studentId: string, status: AttendanceStatus) => {
       if (!classId) return
-      await attendanceStore.saveStudentStatus(classId, studentId, status)
+      await attendanceStore.saveDraftStudentStatus(classId, studentId, status)
     },
     [classId]
   )
@@ -14,15 +14,26 @@ export function useAttendance(classId: string | undefined) {
   const saveAllStatus = useCallback(
     async (statusMap: AttendanceStatusMap) => {
       if (!classId) return
-      await attendanceStore.saveCurrentStatusMap(classId, statusMap)
+      await attendanceStore.saveCurrentDraftStatusMap(classId, statusMap)
     },
     [classId]
   )
 
-  const confirmReport = useCallback(async () => {
+  const clearDraft = useCallback(async () => {
     if (!classId) return
-    await attendanceStore.confirmCurrentReport(classId)
+    await attendanceStore.clearCurrentDraft(classId)
   }, [classId])
 
-  return { saveStatus, saveAllStatus, confirmReport, getCurrentPeriodId: attendanceStore.getCurrentPeriodId }
+  const confirmDraft = useCallback(async () => {
+    if (!classId) return null
+    return attendanceStore.confirmCurrentDraft(classId)
+  }, [classId])
+
+  return {
+    saveStatus,
+    saveAllStatus,
+    clearDraft,
+    confirmDraft,
+    getCurrentPeriodId: attendanceStore.getCurrentPeriodId,
+  }
 }

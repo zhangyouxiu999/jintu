@@ -1,26 +1,58 @@
-import type { AttendanceSnapshot, AttendanceStatus, AttendanceStatusMap, PeriodId } from '@/types'
+import type {
+  AttendanceDraft,
+  AttendanceStatus,
+  AttendanceStatusMap,
+  ConfirmedAttendanceRecord,
+  PeriodId,
+} from '@/types'
 import { getCurrentPeriodId } from '@/lib/period'
 import { today } from '@/lib/date'
 import * as classesStore from './classes'
 import { uuid } from './db'
 import { storage } from './storage'
 
-const map = new Map<string, AttendanceSnapshot>()
+const draftMap = new Map<string, AttendanceDraft>()
+const confirmedMap = new Map<string, ConfirmedAttendanceRecord>()
 
 function key(classId: string, date: string, period: PeriodId): string {
   return `${classId}|${date}|${period}`
 }
 
-function persistOne(snapshot: AttendanceSnapshot): void {
-  storage.saveAttendanceSnapshot(snapshot.classId, snapshot.date, snapshot.period, snapshot)
+function normalizeStatusMap(studentIds: string[], statusMap: AttendanceStatusMap): AttendanceStatusMap {
+  const next: AttendanceStatusMap = {}
+  for (const studentId of studentIds) {
+    next[studentId] = statusMap[studentId] ?? 0
+  }
+  return next
 }
 
-/** 从本地持久化恢复（启动时调用） */
-export function hydrateFromPersisted(data: AttendanceSnapshot[]): void {
-  map.clear()
-  for (const item of data) {
-    if (item?.classId != null && item?.date != null && item?.period != null) {
-      map.set(key(item.classId, item.date, item.period), item)
+function persistDraft(draft: AttendanceDraft): void {
+  storage.saveAttendanceDraft(draft.classId, draft.date, draft.period, draft)
+}
+
+function persistConfirmed(record: ConfirmedAttendanceRecord): void {
+  storage.saveConfirmedAttendanceRecord(record.classId, record.date, record.period, record)
+}
+
+function hasStatusMapChanged(studentIds: string[], statusMap: AttendanceStatusMap): boolean {
+  const currentIds = Object.keys(statusMap)
+  if (currentIds.length !== studentIds.length) return true
+  return studentIds.some((studentId) => statusMap[studentId] == null)
+}
+
+export function hydrateFromPersisted(): void {
+  draftMap.clear()
+  confirmedMap.clear()
+
+  for (const draft of storage.loadAllAttendanceDrafts()) {
+    if (draft?.classId && draft?.date && draft?.period != null) {
+      draftMap.set(key(draft.classId, draft.date, draft.period), draft)
+    }
+  }
+
+  for (const record of storage.loadAllConfirmedAttendanceRecords()) {
+    if (record?.classId && record?.date && record?.period != null && record?.confirmedAt) {
+      confirmedMap.set(key(record.classId, record.date, record.period), record)
     }
   }
 }
@@ -32,112 +64,155 @@ async function getStudentIdsForClass(classId: string): Promise<string[]> {
   return cls?.studentOrder ?? []
 }
 
-export async function get(
+export async function getDraft(
   classId: string,
   date: string,
   period: PeriodId
-): Promise<AttendanceSnapshot | null> {
-  return map.get(key(classId, date, period)) ?? null
+): Promise<AttendanceDraft | null> {
+  return draftMap.get(key(classId, date, period)) ?? null
 }
 
-export async function upsert(snapshot: AttendanceSnapshot): Promise<void> {
-  const k = key(snapshot.classId, snapshot.date, snapshot.period)
-  const next = { ...snapshot, updatedAt: new Date().toISOString() }
-  map.set(k, next)
-  persistOne(next)
+export async function getConfirmedRecord(
+  classId: string,
+  date: string,
+  period: PeriodId
+): Promise<ConfirmedAttendanceRecord | null> {
+  return confirmedMap.get(key(classId, date, period)) ?? null
 }
 
-export async function getOrCreate(
+async function upsertDraft(draft: AttendanceDraft): Promise<AttendanceDraft> {
+  const next = {
+    ...draft,
+    updatedAt: new Date().toISOString(),
+  }
+  draftMap.set(key(next.classId, next.date, next.period), next)
+  persistDraft(next)
+  return next
+}
+
+async function ensureDraft(
   classId: string,
   date: string,
   period: PeriodId,
   studentIds: string[]
-): Promise<AttendanceSnapshot> {
-  const k = key(classId, date, period)
-  let snap = map.get(k)
-  if (snap) return snap
-  const statusMap: AttendanceStatusMap = {}
-  for (const id of studentIds) statusMap[id] = 0
-  snap = {
+): Promise<AttendanceDraft> {
+  const draftKey = key(classId, date, period)
+  const existing = draftMap.get(draftKey)
+
+  if (existing) {
+    if (!hasStatusMapChanged(studentIds, existing.statusMap)) return existing
+    return upsertDraft({
+      ...existing,
+      statusMap: normalizeStatusMap(studentIds, existing.statusMap),
+    })
+  }
+
+  const draft: AttendanceDraft = {
     id: uuid(),
     classId,
     date,
     period,
-    statusMap,
+    statusMap: normalizeStatusMap(studentIds, {}),
     updatedAt: new Date().toISOString(),
   }
-  map.set(k, snap)
-  persistOne(snap)
-  return snap
+  draftMap.set(draftKey, draft)
+  persistDraft(draft)
+  return draft
 }
 
-export async function getCurrentSnapshot(classId: string): Promise<AttendanceSnapshot> {
-  const date = today()
-  const period = getCurrentPeriodId()
+export async function getCurrentDraft(classId: string): Promise<AttendanceDraft> {
   const studentIds = await getStudentIdsForClass(classId)
-  return getOrCreate(classId, date, period, studentIds)
+  return ensureDraft(classId, today(), getCurrentPeriodId(), studentIds)
 }
 
-export async function saveStudentStatus(
+export async function saveDraftStudentStatus(
   classId: string,
   studentId: string,
   status: AttendanceStatus
 ): Promise<void> {
-  const snapshot = await getCurrentSnapshot(classId)
-  await upsert({
-    ...snapshot,
+  const draft = await getCurrentDraft(classId)
+  await upsertDraft({
+    ...draft,
     statusMap: {
-      ...snapshot.statusMap,
+      ...draft.statusMap,
       [studentId]: status,
     },
   })
 }
 
-export async function saveCurrentStatusMap(
+export async function saveCurrentDraftStatusMap(
   classId: string,
   statusMap: AttendanceStatusMap
 ): Promise<void> {
-  const snapshot = await getCurrentSnapshot(classId)
-  await upsert({ ...snapshot, statusMap })
+  const draft = await getCurrentDraft(classId)
+  const studentIds = await getStudentIdsForClass(classId)
+  await upsertDraft({
+    ...draft,
+    statusMap: normalizeStatusMap(studentIds, statusMap),
+  })
 }
 
-export async function confirmCurrentReport(classId: string): Promise<void> {
-  const snapshot = await getCurrentSnapshot(classId)
-  await upsert({ ...snapshot, confirmedAt: new Date().toISOString() })
+export async function clearCurrentDraft(classId: string): Promise<void> {
+  const draft = await getCurrentDraft(classId)
+  const studentIds = await getStudentIdsForClass(classId)
+  await upsertDraft({
+    ...draft,
+    statusMap: normalizeStatusMap(studentIds, {}),
+  })
 }
 
-export async function listByClassAndDate(
+export async function confirmCurrentDraft(classId: string): Promise<ConfirmedAttendanceRecord> {
+  const draft = await getCurrentDraft(classId)
+  const now = new Date().toISOString()
+  const confirmedKey = key(draft.classId, draft.date, draft.period)
+  const existing = confirmedMap.get(confirmedKey)
+  const record: ConfirmedAttendanceRecord = {
+    id: existing?.id ?? uuid(),
+    classId: draft.classId,
+    date: draft.date,
+    period: draft.period,
+    statusMap: { ...draft.statusMap },
+    confirmedAt: now,
+    updatedAt: now,
+  }
+  confirmedMap.set(confirmedKey, record)
+  persistConfirmed(record)
+  return record
+}
+
+export async function listConfirmedByClassAndDate(
   classId: string,
-  date?: string
-): Promise<AttendanceSnapshot[]> {
-  const d = date ?? today()
-  const result: AttendanceSnapshot[] = []
-  for (const v of map.values()) {
-    if (v.classId === classId && v.date === d && v.confirmedAt) result.push(v)
+  date = today()
+): Promise<ConfirmedAttendanceRecord[]> {
+  const result: ConfirmedAttendanceRecord[] = []
+  for (const record of confirmedMap.values()) {
+    if (record.classId === classId && record.date === date) result.push(record)
   }
   return result.sort(
-    (a, b) => a.period - b.period || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    (a, b) => a.period - b.period || new Date(b.confirmedAt).getTime() - new Date(a.confirmedAt).getTime()
   )
 }
 
-/** 按班级列出全部已确认考勤（用于历史页），按日期倒序、同日期按时段排序 */
-export async function listByClass(classId: string): Promise<AttendanceSnapshot[]> {
-  const result: AttendanceSnapshot[] = []
-  for (const v of map.values()) {
-    if (v.classId === classId && v.confirmedAt) result.push(v)
+export async function listConfirmedByClass(classId: string): Promise<ConfirmedAttendanceRecord[]> {
+  const result: ConfirmedAttendanceRecord[] = []
+  for (const record of confirmedMap.values()) {
+    if (record.classId === classId) result.push(record)
   }
   return result.sort(
     (a, b) =>
       b.date.localeCompare(a.date) ||
       a.period - b.period ||
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      new Date(b.confirmedAt).getTime() - new Date(a.confirmedAt).getTime()
   )
 }
 
 export function clearAll(): void {
-  // v2：逐条清理，避免遗留索引；同时清空内存 map
-  for (const v of map.values()) {
-    storage.removeAttendanceSnapshot(v.classId, v.date, v.period)
+  for (const draft of draftMap.values()) {
+    storage.removeAttendanceDraft(draft.classId, draft.date, draft.period)
   }
-  map.clear()
+  for (const record of confirmedMap.values()) {
+    storage.removeConfirmedAttendanceRecord(record.classId, record.date, record.period)
+  }
+  draftMap.clear()
+  confirmedMap.clear()
 }

@@ -3,17 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { storage } from '@/store/storage'
 import * as attendanceStore from '@/store/attendance'
 import * as studentsStore from '@/store/students'
-import { Plus, School, MoreHorizontal, Edit2, Trash2, Download, Calendar, Award, History as HistoryIcon } from 'lucide-react'
+import * as gradesStore from '@/store/grades'
+import * as scheduleStore from '@/store/schedule'
+import { Plus, School, MoreHorizontal, Edit2, Trash2, Download } from 'lucide-react'
 import { useClassList } from '@/hooks/useClassList'
 import type { ClassEntity } from '@/types'
+import { FormSheet, ListSection, OverflowSheet, PageActionRow, PrimaryButton, SecondaryButton, SimpleListRow } from '@/components/ui/app-ui'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import { EmptyStateCard } from '@/components/ui/mobile-ui'
 import { Input } from '@/components/ui/input'
 import {
   AlertDialog,
@@ -25,12 +22,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { showToast } from '@/lib/toast'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { getAppName } from '@/lib/appConfig'
 
 export default function ClassList() {
@@ -44,10 +35,10 @@ export default function ClassList() {
   const [editingClass, setEditingClass] = useState<ClassEntity | null>(null)
   const [appTitle, setAppTitle] = useState(getAppName())
   const [editingTitle, setEditingTitle] = useState(false)
-  const [exportConfirmClass, setExportConfirmClass] = useState<ClassEntity | null>(null)
   const [deleteConfirmClass, setDeleteConfirmClass] = useState<ClassEntity | null>(null)
+  const [actionSheetClass, setActionSheetClass] = useState<ClassEntity | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
-  const listContainerRef = useRef<HTMLDivElement>(null)
+  const savedAppTitle = storage.loadAppTitle()?.trim() || getAppName()
 
   useEffect(() => {
     const saved = storage.loadAppTitle()
@@ -86,9 +77,9 @@ export default function ClassList() {
     setDeleteConfirmClass(null)
   }
 
-  const handleEdit = (cls: ClassEntity) => {
-    setEditingClass(cls)
-    setName(cls.name)
+  const handleEdit = (classEntity: ClassEntity) => {
+    setEditingClass(classEntity)
+    setName(classEntity.name)
   }
 
   const handleSaveEdit = async () => {
@@ -103,26 +94,24 @@ export default function ClassList() {
     }
   }
 
-  const handleExportClass = useCallback(async (cls: ClassEntity) => {
+  const handleExportClass = useCallback(async (classEntity: ClassEntity) => {
     const [snapshots, students] = await Promise.all([
-      attendanceStore.listByClass(cls.id),
-      studentsStore.getByClassId(cls.id),
+      attendanceStore.listConfirmedByClass(classEntity.id),
+      studentsStore.getByClassId(classEntity.id),
     ])
     const studentNames: Record<string, string> = {}
-    for (const s of students) studentNames[s.id] = s.name
+    for (const student of students) studentNames[student.id] = student.name
 
-    const scheduleByClass = storage.loadSchedule() ?? {}
-    const scheduleData = scheduleByClass[cls.id] ?? {}
-    const gradesByClass = storage.loadGrades() ?? {}
-    const periods = gradesByClass[cls.id] ?? []
-    const orderMap = new Map(cls.studentOrder.map((id, i) => [id, i]))
+    const scheduleData = scheduleStore.getSchedule(classEntity.id)
+    const periods = gradesStore.getPeriods(classEntity.id)
+    const orderMap = new Map(classEntity.studentOrder.map((id, index) => [id, index]))
     const sortedStudents = [...students].sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999))
 
-    const fileName = `${cls.name}.xlsx`
+    const fileName = `${classEntity.name}.xlsx`
     try {
       const { buildClassExportWorkbook } = await import('@/lib/exportClassExcel')
       const buf = await buildClassExportWorkbook({
-        cls,
+        cls: classEntity,
         students,
         snapshots,
         scheduleData,
@@ -139,231 +128,195 @@ export default function ClassList() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       <AlertDialog open={!!deleteConfirmClass} onOpenChange={(open) => !open && setDeleteConfirmClass(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader className="text-center sm:text-center">
-            <AlertDialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">确定删除该班级？</AlertDialogTitle>
-            <AlertDialogDescription className="text-caption text-[var(--on-surface-muted)]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>确定删除该班级？</AlertDialogTitle>
+            <AlertDialogDescription>
               {deleteConfirmClass ? `删除「${deleteConfirmClass.name}」后，其学生与考勤记录将一并清除，且无法恢复。` : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-6 flex justify-end gap-2">
+          <div className="mt-6 flex gap-2">
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={handleConfirmDelete}>确定删除</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      <main className="px-4 py-4">
-        {isStandaloneClassList && (
-          <div className="mb-4 flex justify-center">
-            {editingTitle ? (
-              <Input
-                ref={titleInputRef}
-                className="text-title h-9 max-w-[180px] border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)]"
-                value={appTitle}
-                onChange={(e) => setAppTitle(e.target.value)}
-                onBlur={() => saveAppTitle(appTitle)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveAppTitle(appTitle)
-                }}
-              />
-            ) : (
-              <h1
-                className="flex cursor-pointer flex-col items-center gap-1.5 font-bold tracking-tight text-[var(--on-surface)]"
-                onClick={() => setEditingTitle(true)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setEditingTitle(true) }}
-                aria-label={`标题：${appTitle}，点击修改`}
-              >
-                <span className="rounded-full bg-[var(--primary-container)] px-4 py-1.5 text-[15px] text-[var(--primary)]">{appTitle}</span>
-                <span className="h-0.5 w-8 rounded-full bg-[var(--primary)]/40" aria-hidden />
-              </h1>
-            )}
+      {editingTitle ? (
+        <div className="space-y-2">
+          <Input
+            ref={titleInputRef}
+            className="h-11 border-[var(--outline)] bg-[var(--surface)] text-[15px] text-[var(--on-surface)]"
+            value={appTitle}
+            onChange={(e) => setAppTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveAppTitle(appTitle)
+            }}
+          />
+          <div className="flex gap-2">
+            <SecondaryButton
+              type="button"
+              variant="outline"
+              className="h-10 flex-1"
+              onClick={() => {
+                setAppTitle(savedAppTitle)
+                setEditingTitle(false)
+              }}
+            >
+              取消
+            </SecondaryButton>
+            <PrimaryButton type="button" className="h-10 flex-1" onClick={() => saveAppTitle(appTitle)}>
+              保存标题
+            </PrimaryButton>
           </div>
-        )}
+        </div>
+      ) : (
+        <>
+          {list.length > 0 || isStandaloneClassList ? (
+            <PageActionRow>
+              {list.length > 0 ? (
+              <PrimaryButton type="button" className="px-4" onClick={() => setDialogOpen(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
+                  新增班级
+                </PrimaryButton>
+              ) : null}
+              {isStandaloneClassList ? (
+                <SecondaryButton type="button" variant="outline" className="px-4" onClick={() => setEditingTitle(true)}>
+                  修改标题
+                </SecondaryButton>
+              ) : null}
+            </PageActionRow>
+          ) : null}
+        </>
+      )}
+
+      <div className="flex min-h-0 flex-1 flex-col">
         {loading ? (
           <div className="flex min-h-[200px] items-center justify-center py-12" aria-busy="true" />
         ) : list.length === 0 ? (
-          <div className="rounded-[22px] bg-[var(--surface)] border border-[var(--outline-variant)] py-16 text-center px-6">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[22px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/60">
-              <School className="h-10 w-10 text-[var(--primary)]" strokeWidth={1.5} />
-            </div>
-            <p className="text-[22px] font-bold tracking-tight text-[var(--on-surface)]">暂无班级</p>
-            <p className="mt-2 text-[14px] text-[var(--on-surface-muted)]">
-              点击下方按钮新增班级
-            </p>
-            <Button
-              className="mt-7 h-11 rounded-[14px] bg-[var(--primary)] px-6 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.25)]"
-              onClick={() => setDialogOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={2} />
-              新增班级
-            </Button>
-          </div>
+          <EmptyStateCard
+            icon={School}
+            title="暂无班级"
+            actionLabel="新增班级"
+            actionIcon={Plus}
+            onAction={() => setDialogOpen(true)}
+            iconTone="primary"
+            iconSize="xl"
+            className="px-6"
+            titleClassName="text-[22px] font-bold"
+            descriptionClassName="text-[14px]"
+          />
         ) : (
-          <div ref={listContainerRef} className="space-y-2.5">
-            {list.map((cls) => (
-              <div
-                key={cls.id}
-                className="rounded-[18px] bg-[var(--surface)] border border-[var(--outline-variant)] flex min-h-[60px] w-full items-center gap-3 px-4 py-3"
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => navigate(`/attendance/${cls.id}`)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left h-auto py-3"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[var(--primary-container)] to-[var(--primary-container)]/70 text-[17px] font-semibold text-[var(--primary)]">
-                    {cls.name.charAt(0)}
-                  </div>
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--on-surface)]">
-                    {cls.name}
-                  </span>
-                </Button>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      type="button"
-                      className="h-10 w-10 shrink-0 rounded-full text-[var(--on-surface-muted)]"
-                      aria-label="更多"
-                    >
-                      <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[10rem]">
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault()
-                        handleEdit(cls)
-                      }}
-                    >
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      修改
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`/schedule/${cls.id}`) }}>
-                      <Calendar className="mr-2 h-4 w-4" />
-                      课程表
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`/grades/${cls.id}`) }}>
-                      <Award className="mr-2 h-4 w-4" />
-                      成绩单
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`/history/${cls.id}`) }}>
-                      <HistoryIcon className="mr-2 h-4 w-4" />
-                      历史考勤
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault()
-                        setExportConfirmClass(cls)
-                      }}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      导出所有
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={(e) => {
-                        e.preventDefault()
-                        setDeleteConfirmClass(cls)
-                      }}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      删除
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
-
-            <Button
-              className="mt-4 h-11 w-full rounded-[14px] bg-[var(--primary)] text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(0,122,255,0.22)]"
-              onClick={() => setDialogOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={2} />
-              新增班级
-            </Button>
-          </div>
+          <ListSection className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-[var(--outline-variant)]/80">
+              {list.map((classEntity) => (
+                <div key={classEntity.id} className="flex min-h-[68px] items-center gap-3 px-4 py-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => navigate(`/attendance/${classEntity.id}`)}
+                    className="flex h-auto min-w-0 flex-1 items-center gap-3 rounded-[14px] py-3 text-left"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--primary-container)] text-[16px] font-semibold text-[var(--primary)]">
+                      {classEntity.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold text-[var(--on-surface)]">
+                        {classEntity.name}
+                      </span>
+                      <span className="mt-1 block text-[12px] text-[var(--on-surface-muted)]">
+                        {classEntity.studentOrder.length} 位学生
+                      </span>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    className="h-10 w-10 shrink-0 rounded-[14px] border-[var(--outline)] bg-[var(--surface-2)] text-[var(--on-surface-muted)] shadow-none"
+                    aria-label="更多"
+                    onClick={() => setActionSheetClass(classEntity)}
+                  >
+                    <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </ListSection>
         )}
-      </main>
+      </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader className="text-center sm:text-center pb-2">
-            <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">新增班级</DialogTitle>
-            <DialogDescription className="text-caption text-[var(--on-surface-muted)]">填写班级名称</DialogDescription>
-          </DialogHeader>
-          <div className="py-1">
-            <Input
-              placeholder="班级名称"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              autoFocus
-              className="h-8 min-h-0 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] text-[14px]"
-            />
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
-            <Button size="sm" onClick={handleAdd} disabled={!name.trim() || submitting} className="h-8 min-h-0 px-2.5 text-[11px]">{submitting ? '…' : '确定'}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <OverflowSheet open={!!actionSheetClass} onOpenChange={(open) => !open && setActionSheetClass(null)} title={actionSheetClass?.name ?? '当前班级'}>
+        <ListSection>
+          <SimpleListRow
+            title="修改班级名称"
+            leading={<Edit2 className="h-4 w-4 text-[var(--on-surface-muted)]" strokeWidth={1.8} />}
+            onClick={() => {
+              if (!actionSheetClass) return
+              handleEdit(actionSheetClass)
+              setActionSheetClass(null)
+            }}
+          />
+          <div className="mx-4 h-px bg-[var(--outline-variant)]" />
+          <SimpleListRow
+            title="导出全部表单"
+            leading={<Download className="h-4 w-4 text-[var(--on-surface-muted)]" strokeWidth={1.8} />}
+            onClick={async () => {
+              if (!actionSheetClass) return
+              const target = actionSheetClass
+              setActionSheetClass(null)
+              await handleExportClass(target)
+            }}
+          />
+          <div className="mx-4 h-px bg-[var(--outline-variant)]" />
+          <SimpleListRow
+            title="删除班级"
+            leading={<Trash2 className="h-4 w-4 text-[var(--error)]" strokeWidth={1.8} />}
+            titleClassName="text-[var(--error)]"
+            onClick={() => {
+              if (!actionSheetClass) return
+              setDeleteConfirmClass(actionSheetClass)
+              setActionSheetClass(null)
+            }}
+          />
+        </ListSection>
+      </OverflowSheet>
 
-      <Dialog open={!!exportConfirmClass} onOpenChange={(open) => { if (!open) setExportConfirmClass(null) }}>
-        <DialogContent>
-          <DialogHeader className="text-center sm:text-center pb-2">
-            <DialogTitle className="text-dialog-title text-[var(--on-surface)]">确认导出</DialogTitle>
-            <DialogDescription className="text-caption text-[var(--on-surface-muted)]">
-              {exportConfirmClass && (
-                <>将「{exportConfirmClass.name}」班级全部表单（点名表、考勤记录、课程表、成绩单）导出为 Excel 文件。</>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setExportConfirmClass(null)} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
-            <Button
-              size="sm"
-              onClick={async () => {
-                if (!exportConfirmClass) return
-                setExportConfirmClass(null)
-                await handleExportClass(exportConfirmClass)
-              }}
-              className="h-8 min-h-0 px-2.5 text-[11px]"
-            >
-              确认导出
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <FormSheet open={dialogOpen} onOpenChange={setDialogOpen} title="新增班级">
+        <div className="py-1">
+          <Input
+            placeholder="班级名称"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            autoFocus
+            className="bg-[var(--surface)]"
+          />
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">取消</Button>
+          <Button onClick={handleAdd} disabled={!name.trim() || submitting} className="flex-1">{submitting ? '…' : '确定'}</Button>
+        </div>
+      </FormSheet>
 
-      <Dialog open={!!editingClass} onOpenChange={(open) => { if (!open) { setEditingClass(null); setName('') } }}>
-        <DialogContent>
-          <DialogHeader className="text-center sm:text-center pb-2">
-            <DialogTitle className="text-dialog-title text-[var(--on-surface)] block text-center">编辑班级</DialogTitle>
-            <DialogDescription className="text-caption text-[var(--on-surface-muted)]">修改班级名称</DialogDescription>
-          </DialogHeader>
-          <div className="py-1">
-            <Input
-              placeholder="班级名称"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-              autoFocus
-              className="h-8 min-h-0 rounded-[var(--radius-sm)] border-[var(--outline)] bg-[var(--surface)] text-[14px]"
-            />
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setEditingClass(null); setName('') }} className="h-8 min-h-0 px-2.5 text-[11px]">取消</Button>
-            <Button size="sm" onClick={handleSaveEdit} disabled={!name.trim() || submitting} className="h-8 min-h-0 px-2.5 text-[11px]">{submitting ? '…' : '保存'}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <FormSheet open={!!editingClass} onOpenChange={(open) => { if (!open) { setEditingClass(null); setName('') } }} title="编辑班级">
+        <div className="py-1">
+          <Input
+            placeholder="班级名称"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+            autoFocus
+            className="bg-[var(--surface)]"
+          />
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Button variant="outline" onClick={() => { setEditingClass(null); setName('') }} className="flex-1">取消</Button>
+          <Button onClick={handleSaveEdit} disabled={!name.trim() || submitting} className="flex-1">{submitting ? '…' : '保存'}</Button>
+        </div>
+      </FormSheet>
     </div>
   )
 }

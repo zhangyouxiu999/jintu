@@ -1,71 +1,64 @@
 import * as React from 'react'
-import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 import { type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 
 /** Alert 内容区：padding 20px，区块 gap 12px，与 Dialog 统一 */
-const alertDialogContentBase =
-  'fixed z-[110] flex flex-col gap-3 left-1/2 right-auto top-1/2 bottom-auto w-[min(calc(100vw-2rem),28rem)] max-w-md max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-xl)] border-0 bg-[var(--surface)] p-5 text-[14px] shadow-[0_8px_40px_rgba(0,0,0,0.12)] opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100'
+const AlertDialogContext = React.createContext<{ onOpenChange?: (open: boolean) => void } | null>(null)
 
-function AlertDialog(props: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+function AlertDialog({ children, onOpenChange, ...props }: React.ComponentProps<typeof Dialog>) {
+  return (
+    <AlertDialogContext.Provider value={{ onOpenChange }}>
+      <Dialog {...props} onOpenChange={onOpenChange}>
+        {children}
+      </Dialog>
+    </AlertDialogContext.Provider>
+  )
 }
 
-function AlertDialogPortal(props: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
-  return <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
+function AlertDialogPortal(props: React.ComponentProps<'div'>) {
+  return <div data-slot="alert-dialog-portal" {...props} />
 }
 
 function AlertDialogOverlay({
   className,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
-  return (
-    <AlertDialogPrimitive.Overlay
-      data-slot="alert-dialog-overlay"
-      className={cn(
-        'fixed inset-0 z-[110] bg-black/45 opacity-0 transition-opacity duration-150 ease-out data-[state=open]:opacity-100',
-        className
-      )}
-      {...props}
-    />
-  )
+}: React.ComponentProps<'div'>) {
+  return <div data-slot="alert-dialog-overlay" className={className} {...props} />
 }
 
 function AlertDialogContent({
   className,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogContent>) {
   return (
-    <AlertDialogPortal>
-      <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
-        data-slot="alert-dialog-content"
-        className={cn(
-          alertDialogContentBase,
-          className
-        )}
-        {...props}
-      />
-    </AlertDialogPortal>
+    <DialogContent
+      role="alertdialog"
+      aria-modal="true"
+      data-slot="alert-dialog-content"
+      className={cn(className)}
+      {...props}
+    />
   )
 }
 
 function AlertDialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot="alert-dialog-header"
-      className={cn('flex flex-col gap-2 text-center sm:text-left', className)}
-      {...props}
-    />
-  )
+  return <DialogHeader data-slot="alert-dialog-header" className={className} {...props} />
 }
 
 function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="alert-dialog-footer"
-      className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+      className={cn('flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end', className)}
       {...props}
     />
   )
@@ -74,40 +67,39 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>)
 function AlertDialogTitle({
   className,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
-  return (
-    <AlertDialogPrimitive.Title
-      data-slot="alert-dialog-title"
-      className={cn('text-dialog-title', className)}
-      {...props}
-    />
-  )
+}: React.ComponentProps<typeof DialogTitle>) {
+  return <DialogTitle data-slot="alert-dialog-title" className={cn('text-dialog-title', className)} {...props} />
 }
 
 function AlertDialogDescription({
   className,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
-  return (
-    <AlertDialogPrimitive.Description
-      data-slot="alert-dialog-description"
-      className={cn('text-caption', className)}
-      {...props}
-    />
-  )
+}: React.ComponentProps<typeof DialogDescription>) {
+  return <DialogDescription data-slot="alert-dialog-description" className={cn('text-caption', className)} {...props} />
 }
 
 function AlertDialogAction({
   className,
   variant = 'default',
+  onClick,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
+}: React.ComponentProps<'button'> &
   VariantProps<typeof buttonVariants>) {
+  const alertDialogContext = React.useContext(AlertDialogContext)
+
   return (
-    <AlertDialogPrimitive.Action
+    <Button
+      type="button"
       data-slot="button"
-      data-variant={variant}
-      className={cn(buttonVariants({ variant, size: 'sm' }), 'h-8 min-h-0 px-2.5 text-[11px]', className)}
+      variant={variant ?? 'default'}
+      size="default"
+      className={cn('min-h-11 px-4 text-[14px] font-medium sm:min-w-[96px]', className)}
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented) {
+          alertDialogContext?.onOpenChange?.(false)
+        }
+      }}
       {...props}
     />
   )
@@ -115,13 +107,24 @@ function AlertDialogAction({
 
 function AlertDialogCancel({
   className,
+  onClick,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
+}: React.ComponentProps<'button'>) {
+  const alertDialogContext = React.useContext(AlertDialogContext)
+
   return (
-    <AlertDialogPrimitive.Cancel
+    <Button
+      type="button"
       data-slot="button"
-      data-variant="outline"
-      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-8 min-h-0 px-2.5 text-[11px]', className)}
+      variant="outline"
+      size="default"
+      className={cn('min-h-11 px-4 text-[14px] font-medium sm:min-w-[96px]', className)}
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented) {
+          alertDialogContext?.onOpenChange?.(false)
+        }
+      }}
       {...props}
     />
   )

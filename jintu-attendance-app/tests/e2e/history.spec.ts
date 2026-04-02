@@ -6,7 +6,7 @@ import {
   FIXED_ISO,
   classEntity,
   students,
-  attendanceSnapshots,
+  confirmedAttendanceRecords,
 } from './utils/fixtures'
 
 test('history list, detail view, export', async ({ page }) => {
@@ -14,24 +14,25 @@ test('history list, detail view, export', async ({ page }) => {
     auth: true,
     classes: [classEntity],
     students,
-    attendance: attendanceSnapshots,
+    confirmedAttendanceRecords,
     currentClassId: classEntity.id,
   })
   await installFixedDate(page, FIXED_ISO)
 
   await gotoHash(page, `/history/${classEntity.id}`)
-  await expect(page.getByText('2026-03-18')).toBeVisible()
+  await expect(page.getByRole('button', { name: '导出' })).toBeVisible()
+  const dateButton = page.getByRole('button', { name: /^2026-03-18$/ }).first()
+  await expect(dateButton).toBeVisible()
 
-  await page.getByRole('button', { name: '2026-03-18' }).click()
+  await dateButton.click()
   await page.getByRole('button', { name: '上午' }).click()
   await expect(page.getByText('考勤报告')).toBeVisible()
   await expect(page.locator('pre')).toContainText('一班')
 
   await page.getByRole('dialog').locator('button', { hasText: '关闭' }).first().click()
 
-  await page.getByRole('button', { name: '导出' }).click()
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: '确认导出' }).click()
+  await page.getByRole('button', { name: '导出' }).click()
   const download = await downloadPromise
   await expect(download.suggestedFilename()).toBe('一班历史考勤.xlsx')
 })

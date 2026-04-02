@@ -3,7 +3,6 @@ import type { AttendanceStatus, ClassEntity, Student } from '@/types'
 import * as classesStore from '@/store/classes'
 import * as studentsStore from '@/store/students'
 import * as attendanceStore from '@/store/attendance'
-import { today } from '@/lib/date'
 
 export function useClass(classId: string | undefined) {
   const [classEntity, setClassEntity] = useState<ClassEntity | null>(null)
@@ -42,13 +41,11 @@ export function useClass(classId: string | undefined) {
       setLoading(false)
       return
     }
-    const date = today()
-    const period = attendanceStore.getCurrentPeriodId()
-    const snap = await attendanceStore.getOrCreate(classId, date, period, list.map((s) => s.id))
+    const draft = await attendanceStore.getCurrentDraft(classId)
     const merged: Student[] = list.map((s) => ({
       id: s.id,
       name: s.name,
-      attendanceStatus: snap.statusMap[s.id] ?? 0,
+      attendanceStatus: draft.statusMap[s.id] ?? 0,
     }))
     const orderMap = new Map(cls.studentOrder.map((id, i) => [id, i]))
     merged.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999))
